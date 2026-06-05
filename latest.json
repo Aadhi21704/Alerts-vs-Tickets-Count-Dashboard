@@ -1,0 +1,37 @@
+[
+    {
+        "timestamp": "2026-06-05T14:09:44.652Z",
+        "sentinel_count": 3,
+        "jira_count": 3,
+        "sentinel_alerts": [
+            {
+                "id": "2493719849843913721"
+            },
+            {
+                "id": "2494346727208233731"
+            },
+            {
+                "id": "2494351901461542392"
+            }
+        ],
+        "jira_tickets": [
+            {
+                "key": "NSIR-809392",
+                "summary": "Lateral Movement 192.168.31.6 QXCPU01704\\Admin (interactive session)",
+                "created": "2026-06-04T18:51:41.828+0530"
+            },
+            {
+                "key": "NSIR-809390",
+                "summary": "JOugLRNy.exe",
+                "created": "2026-06-04T18:43:11.568+0530"
+            },
+            {
+                "key": "NSIR-808156",
+                "summary": "powershell.exe (CLI bdbc)",
+                "created": "2026-06-03T22:00:45.470+0530"
+            }
+        ],
+        "status": "Equal",
+        "description": "All SentinelOne alerts have corresponding Jira tickets."
+    }
+]

@@ -1,0 +1,7 @@
+services:
+  dashboard:
+    build: .
+    container_name: sentinelone-jira-dashboard
+    ports:
+      - "8000:8000"
+    restart: unless-stopped

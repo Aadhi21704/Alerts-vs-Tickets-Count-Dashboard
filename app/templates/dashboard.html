@@ -1,0 +1,99 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>SentinelOne Jira Dashboard</title>
+
+    <link rel="stylesheet" href="/static/style.css">
+</head>
+<body>
+
+<div class="container">
+
+    <div class="header-card">
+        <h1>SentinelOne vs Jira Validation Dashboard</h1>
+        <p>Security Alert Validation Dashboard</p>
+    </div>
+
+    <div class="cards">
+
+        <div class="card">
+            <h2>SentinelOne Alerts</h2>
+
+            <span id="sentinel-count" class="clickable-count">
+                0
+            </span>
+        </div>
+
+        <div class="card">
+            <h2>Jira Tickets</h2>
+
+            <span id="jira-count" class="clickable-count">
+                0
+            </span>
+        </div>
+
+        <div class="card">
+            <h2>Status</h2>
+
+            <span id="status">
+                Loading...
+            </span>
+        </div>
+
+    </div>
+
+    <div class="table-card">
+
+        <table>
+
+            <thead>
+                <tr>
+                    <th>Timestamp</th>
+                    <th>SentinelOne</th>
+                    <th>Jira</th>
+                    <th>Status</th>
+                </tr>
+            </thead>
+
+            <tbody>
+
+                <tr>
+
+                    <td id="timestamp"></td>
+
+                    <td id="table-sentinel"></td>
+
+                    <td id="table-jira"></td>
+
+                    <td id="table-status"></td>
+
+                </tr>
+
+            </tbody>
+
+        </table>
+
+    </div>
+
+</div>
+
+<div id="modal" class="modal">
+
+    <div class="modal-content">
+
+        <span id="close-modal" class="close">
+            &times;
+        </span>
+
+        <h2 id="modal-title"></h2>
+
+        <div id="modal-body"></div>
+
+    </div>
+
+</div>
+
+<script src="/static/app.js"></script>
+
+</body>
+</html>
