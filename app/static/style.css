@@ -154,3 +154,51 @@ tr:hover {
     color: #ff7a1a;
     text-decoration: underline;
 }
+
+.count {
+    font-size: 42px;
+    font-weight: bold;
+    color: #ea580c;
+}
+
+.client-card {
+    margin-top: 15px;
+    background: #1a1a1a;
+    border-radius: 12px;
+    border: 1px solid #2a2a2a;
+    overflow: hidden;
+}
+
+.client-header {
+    padding: 16px;
+    cursor: pointer;
+    background: #222222;
+    font-weight: bold;
+    display: flex;
+    justify-content: space-between;
+}
+
+.client-header:hover {
+    background: #2d2d2d;
+}
+
+.client-details {
+    display: none;
+    padding: 20px;
+}
+
+.equal-card {
+    border-left: 5px solid #22c55e;
+}
+
+.mismatch-card {
+    border-left: 5px solid #dc2626;
+}
+
+.equal-card .client-header {
+    color: #22c55e;
+}
+
+.mismatch-card .client-header {
+    color: #dc2626;
+}

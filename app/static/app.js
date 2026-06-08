@@ -8,11 +8,20 @@ async function loadData() {
     const data = dashboardData[0];
     const clients = data.clients || [];
 
+    const mismatchClients =
+        clients.filter(
+            c => c.status !== 'Equal'
+        ).length;
+
+
     document.getElementById('sentinel-count').innerText =
         data.total_sentinel_count;
 
     document.getElementById('jira-count').innerText =
         data.total_jira_count;
+
+    document.getElementById('mismatch-clients').innerText =
+        mismatchClients;
 
     const statusElement =
     document.getElementById('status');
@@ -33,180 +42,90 @@ async function loadData() {
         statusElement.style.color = '#dc2626';
     }
 
-    document.getElementById('timestamp').innerText =
-        data.timestamp;
+    const clientCards =
+        document.getElementById('client-cards');
 
-    document.getElementById('table-sentinel').innerText =
-        data.total_sentinel_count;
+    clientCards.innerHTML = clients.map(client => `
 
-    document.getElementById('table-jira').innerText =
-        data.total_jira_count;
+    <div class="client-card ${client.status === 'Equal' ? 'equal-card' : 'mismatch-card'}">
 
-    document.getElementById('table-status').innerText =
-        data.clients.every(c => c.status === 'Equal')
-            ? 'Equal'
-            : 'Mismatch';
+        <div class="client-header"
+            onclick="toggleClient('${client.client}')">
 
+            <span>▼ ${client.client}</span>
 
-    const clientsBody =
-    document.getElementById('clients-body');
+            <span>
+                S1: ${client.sentinel_count}
+                |
+                Jira: ${client.jira_count}
+                |
+                ${client.status}
+            </span>
 
-    clientsBody.innerHTML = clients.map(client => `
+        </div>
 
-    <tr class="client-row"
-        onclick="showClientDetails('${client.client}')">
+        <div
+            id="client-${client.client}"
+            class="client-details"
+        >
 
-        <td>${client.client}</td>
+            <h4>SentinelOne Alerts</h4>
 
-        <td>${client.sentinel_count}</td>
+            <ul>
+                ${client.sentinel_alerts
+                    .map(alert => `
+                        <li>${alert.id}</li>
+                    `)
+                    .join('')}
+            </ul>
 
-        <td>${client.jira_count}</td>
+            <h4>Jira Tickets</h4>
 
-        <td>${client.status}</td>
+            <ul>
+                ${client.jira_tickets
+                    .map(ticket => `
+                        <li>
+                            <a
+                                href="https://nopalcyber.atlassian.net/browse/${ticket.key}"
+                                target="_blank"
+                                class="jira-link"
+                            >
+                                ${ticket.key}
+                            </a>
+                        </li>
+                    `)
+                    .join('')}
+            </ul>
 
-    </tr>
+        </div>
+
+    </div>
 
     `).join('');
 }
+
 
 loadData();
 
 setInterval(loadData, 30000);
 
-const modal = document.getElementById('modal');
 
-document.getElementById('close-modal').onclick = () => {
-    modal.style.display = 'none';
-};
 
-// document.getElementById('sentinel-count').onclick = () => {
+function toggleClient(clientName) {
 
-//     const data = dashboardData[0];
-
-//     document.getElementById('modal-title').innerText =
-//         'SentinelOne Alerts';
-
-//     document.getElementById('modal-body').innerHTML = `
-
-//         <table class="detail-table">
-
-//             <thead>
-//                 <tr>
-//                     <th>Alert ID</th>
-//                 </tr>
-//             </thead>
-
-//             <tbody>
-
-//                 ${data.sentinel_alerts.map(alert => `
-
-//                     <tr>
-//                         <td>${alert.id}</td>
-//                     </tr>
-
-//                 `).join('')}
-
-//             </tbody>
-
-//         </table>
-
-//     `;
-
-//     modal.style.display = 'block';
-// };
-
-// document.getElementById('jira-count').onclick = () => {
-
-//     const data = dashboardData[0];
-
-//     document.getElementById('modal-title').innerText =
-//         'Jira Tickets';
-
-//     document.getElementById('modal-body').innerHTML = `
-
-//         <table class="detail-table">
-
-//             <thead>
-//                 <tr>
-//                     <th>Key</th>
-//                     <th>Summary</th>
-//                     <th>Created</th>
-//                 </tr>
-//             </thead>
-
-//             <tbody>
-
-//                 ${data.jira_tickets.map(ticket => `
-
-//                     <tr>
-
-//                         <td>
-//                             <a
-//                                 href="https://nopalcyber.atlassian.net/browse/${ticket.key}"
-//                                 target="_blank"
-//                                 class="jira-link"
-//                             >
-//                                 ${ticket.key}
-//                             </a>
-//                         </td>
-
-//                         <td>${ticket.summary}</td>
-
-//                         <td>${ticket.created}</td>
-
-//                     </tr>
-
-//                 `).join('')}
-
-//             </tbody>
-
-//         </table>
-
-//     `;
-
-//     modal.style.display = 'block';
-// };
-
-function showClientDetails(clientName) {
-
-    const client =
-        dashboardData[0].clients.find(
-            c => c.client === clientName
+    const element =
+        document.getElementById(
+            `client-${clientName}`
         );
 
-    if (!client) return;
-
-    document.getElementById('modal-title').innerText =
-        clientName;
-
-    document.getElementById('modal-body').innerHTML = `
-
-        <h3>SentinelOne Alerts</h3>
-
-        <ul>
-            ${client.sentinel_alerts
-                .map(a => `<li>${a.id}</li>`)
-                .join('')}
-        </ul>
-
-        <h3>Jira Tickets</h3>
-
-        <ul>
-            ${client.jira_tickets
-                .map(t => `
-                    <li>
-                        <a
-                            href="https://nopalcyber.atlassian.net/browse/${t.key}"
-                            target="_blank"
-                            class="jira-link"
-                        >
-                            ${t.key}
-                        </a>
-                    </li>
-                `)
-                .join('')}
-        </ul>
-    `;
-
-    modal.style.display = 'block';
+    if (
+        element.style.display === 'none'
+        ||
+        element.style.display === ''
+    ) {
+        element.style.display = 'block';
+    }
+    else {
+        element.style.display = 'none';
+    }
 }

@@ -19,7 +19,7 @@
         <div class="card">
             <h2>SentinelOne Alerts</h2>
 
-            <span id="sentinel-count" class="clickable-count">
+            <span id="sentinel-count" class="count">
                 0
             </span>
         </div>
@@ -27,7 +27,7 @@
         <div class="card">
             <h2>Jira Tickets</h2>
 
-            <span id="jira-count" class="clickable-count">
+            <span id="jira-count" class="count">
                 0
             </span>
         </div>
@@ -40,65 +40,22 @@
             </span>
         </div>
 
-    </div>
+        
+        <div class="card">
+            <h2>Mismatch Clients</h2>
+            <span id="mismatch-clients" class="count">0</span>
+        </div>
 
-    <div class="table-card">
-
-        <table>
-
-            <thead>
-                <tr>
-                    <th>Timestamp</th>
-                    <th>SentinelOne</th>
-                    <th>Jira</th>
-                    <th>Status</th>
-                </tr>
-            </thead>
-
-            <tbody>
-
-                <tr>
-
-                    <td id="timestamp"></td>
-
-                    <td id="table-sentinel"></td>
-
-                    <td id="table-jira"></td>
-
-                    <td id="table-status"></td>
-
-                </tr>
-
-            </tbody>
-
-        </table>
 
     </div>
 
     <!-- new code starts here -->
 
-    <div class="table-card">
-
-        <table id="clients-table">
-
-            <thead>
-                <tr>
-                    <th>Client</th>
-                    <th>SentinelOne</th>
-                    <th>Jira</th>
-                    <th>Status</th>
-                </tr>
-            </thead>
-
-            <tbody id="clients-body">
-
-            </tbody>
-
-        </table>
+    <div id="client-cards">
 
     </div>
 
-    <!-- ends here --> 
+    <!-- ends here -->
 
 </div>
 
