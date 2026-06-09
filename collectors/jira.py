@@ -1,5 +1,9 @@
 import requests
 
+from config import (
+    DAYS_BACK,
+    JIRA_URL
+)
 
 def extract_site_name(description):
 
@@ -64,20 +68,15 @@ def fetch_jira_tickets(
     api_token
 ):
 
-    url = (
-        "https://nopalcyber.atlassian.net/"
-        "rest/api/3/search/jql"
-    )
+    url = JIRA_URL
 
-    jql = (
-        '"tenant name[labels]" IN '
-        '(QuisLex, CapLaw, LegalOps, '
-        'LCRA, Consint.ai, NopalCyber) '
-        'AND issuetype = SentinelOne '
-        'AND created >= -14d '
-        'AND project = NSIR '
-        'ORDER BY created DESC'
-    )
+    jql = f'''
+        "tenant name[labels]" IN (QuisLex, CapLaw, LegalOps, LCRA, Consint.ai, NopalCyber)
+        AND issuetype = SentinelOne
+        AND created >= -{DAYS_BACK}d
+        AND project = NSIR
+        ORDER BY created DESC
+        '''.strip()
 
     response = requests.get(
         url,

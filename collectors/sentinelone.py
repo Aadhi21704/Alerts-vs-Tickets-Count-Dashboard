@@ -3,26 +3,20 @@ from datetime import datetime, timedelta, UTC
 import requests
 
 
-ALLOWED_CLIENTS = [
-    "QuisLex",
-    "CapLaw",
-    "LegalOps",
-    "LCRA",
-    "Consint.ai",
-    "NopalCyber"
-]
+from config import (
+    ALLOWED_CLIENTS,
+    DAYS_BACK,
+    SENTINELONE_URL
+)
 
 
 def fetch_sentinelone_alerts(api_token):
 
-    url = (
-        "https://usea1-002-mssp.sentinelone.net/"
-        "web/api/v2.1/threats"
-    )
+    url = SENTINELONE_URL
 
     created_after = (
         datetime.now(UTC)
-        - timedelta(days=14)
+        - timedelta(days=DAYS_BACK)
     ).isoformat()
 
     headers = {

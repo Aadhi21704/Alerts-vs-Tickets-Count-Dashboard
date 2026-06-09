@@ -47,101 +47,9 @@ body {
     color: #f5f5f5;
 }
 
-.clickable-count {
-    font-size: 42px;
-    font-weight: bold;
-    cursor: pointer;
-    color: #ea580c;
-    transition: 0.2s ease;
-}
-
-.clickable-count:hover {
-    color: #ff7a1a;
-    text-decoration: underline;
-}
-
 #status {
     font-size: 40px;
     font-weight: bold;
-}
-
-.table-card {
-    background: #1a1a1a;
-    border-radius: 12px;
-    overflow: hidden;
-    border: 1px solid #2a2a2a;
-    box-shadow: 0 4px 15px rgba(0,0,0,.4);
-}
-
-table {
-    width: 100%;
-    border-collapse: collapse;
-}
-
-th {
-    background: #dc2626;
-    color: white;
-    padding: 14px;
-    text-align: left;
-}
-
-td {
-    padding: 14px;
-    border-top: 1px solid #2a2a2a;
-}
-
-tr:hover {
-    background: #222222;
-}
-
-.modal {
-    display: none;
-    position: fixed;
-    inset: 0;
-    background: rgba(0,0,0,.8);
-}
-
-.modal-content {
-    width: 70%;
-    margin: 80px auto;
-    background: #1a1a1a;
-    color: white;
-    padding: 25px;
-    border-radius: 12px;
-    border-top: 4px solid #ea580c;
-}
-
-.close {
-    float: right;
-    font-size: 28px;
-    cursor: pointer;
-    color: #ea580c;
-}
-
-.close:hover {
-    color: #ff7a1a;
-}
-
-.detail-table {
-    width: 100%;
-    border-collapse: collapse;
-    margin-top: 10px;
-}
-
-.detail-table th {
-    background: #dc2626;
-    color: white;
-    padding: 12px;
-    text-align: left;
-}
-
-.detail-table td {
-    padding: 12px;
-    border-bottom: 1px solid #2a2a2a;
-}
-
-.detail-table tr:hover {
-    background: #222222;
 }
 
 .jira-link {
@@ -201,4 +109,10 @@ tr:hover {
 
 .mismatch-card .client-header {
     color: #dc2626;
+}
+
+.last-updated {
+    color: #bdbdbd;
+    font-size: 14px;
+    margin-top: 8px;
 }

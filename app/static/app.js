@@ -6,6 +6,25 @@ async function loadData() {
     dashboardData = await response.json();
 
     const data = dashboardData[0];
+    
+    // timestamp logic 
+    const updatedTime =
+        new Date(data.timestamp);
+
+    document.getElementById('last-updated').innerText =
+        `Last Updated: ${updatedTime.toLocaleString(
+            'en-IN',
+            {
+                day: '2-digit',
+                month: 'short',
+                year: 'numeric',
+                hour: '2-digit',
+                minute: '2-digit',
+                hour12: true,
+                timeZone: 'Asia/Kolkata'
+            }
+        )} IST`;
+
     const clients = data.clients || [];
 
     const mismatchClients =

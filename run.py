@@ -2,6 +2,8 @@ import json
 import os
 import urllib3
 from dotenv import load_dotenv
+from logger import logger
+
 from collectors.sentinelone import (
     fetch_sentinelone_alerts
 )
@@ -19,66 +21,78 @@ urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
 load_dotenv()
 
 def main():
+        
+    try:
+        logger.info("Collection cycle started")
 
-    s1_token = os.getenv(
-        "S1_API_TOKEN"
-    )
-
-    jira_email = os.getenv(
-        "JIRA_EMAIL"
-    )
-
-    jira_token = os.getenv(
-        "JIRA_API_TOKEN"
-    )
-
-    if not s1_token:
-        raise ValueError(
-            "S1_API_TOKEN not set"
+        s1_token = os.getenv(
+            "S1_API_TOKEN"
         )
 
-    if not jira_email:
-        raise ValueError(
-            "JIRA_EMAIL not set"
+        jira_email = os.getenv(
+            "JIRA_EMAIL"
         )
 
-    if not jira_token:
-        raise ValueError(
-            "JIRA_API_TOKEN not set"
+        jira_token = os.getenv(
+            "JIRA_API_TOKEN"
         )
 
-    sentinel_alerts = (
-        fetch_sentinelone_alerts(
-            s1_token
-        )
-    )
+        if not s1_token:
+            raise ValueError(
+                "S1_API_TOKEN not set"
+            )
 
-    jira_tickets = (
-        fetch_jira_tickets(
-            jira_email,
-            jira_token
-        )
-    )
+        if not jira_email:
+            raise ValueError(
+                "JIRA_EMAIL not set"
+            )
 
-    result = compare_data(
-        sentinel_alerts,
-        jira_tickets
-    )
+        if not jira_token:
+            raise ValueError(
+                "JIRA_API_TOKEN not set"
+            )
 
-    with open(
-        "latest.json",
-        "w",
-        encoding="utf-8"
-    ) as f:
-
-        json.dump(
-            [result],
-            f,
-            indent=2
+        sentinel_alerts = (
+            fetch_sentinelone_alerts(
+                s1_token
+            )
         )
 
-    print("latest.json updated")
+        logger.info(f"SentinelOne: {len(sentinel_alerts)} alerts retrieved")
 
+        jira_tickets = (
+            fetch_jira_tickets(
+                jira_email,
+                jira_token
+            )
+        )
+
+        logger.info(f"Jira: {len(jira_tickets)} tickets retrieved")
+
+        result = compare_data(
+            sentinel_alerts,
+            jira_tickets
+        )
+
+        with open(
+            "latest.json",
+            "w",
+            encoding="utf-8"
+        ) as f:
+
+            json.dump(
+                [result],
+                f,
+                indent=2
+            )
+        logger.info("latest.json updated successfully")
+        print("latest.json updated")
+
+    except Exception as e:
+        logger.exception(
+            f"Collection cycle failed: {e}"
+        )
+        raise
 
 if __name__ == "__main__":
     main()
