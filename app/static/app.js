@@ -27,6 +27,19 @@ async function loadData() {
 
     const clients = data.clients || [];
 
+    clients.sort((a, b) => {
+
+        if (a.status === b.status) {
+            return a.client.localeCompare(
+                b.client
+            );
+        }
+
+        return a.status === 'Mismatch'
+            ? -1
+            : 1;
+    });
+    
     const mismatchClients =
         clients.filter(
             c => c.status !== 'Equal'
@@ -71,7 +84,10 @@ async function loadData() {
         <div class="client-header"
             onclick="toggleClient('${client.client}')">
 
-            <span>▼ ${client.client}</span>
+            <span>
+                ▼ ${client.client}
+                [${client.sources.join(', ').toUpperCase()}]
+            </span>
 
             <span>
                 S1: ${client.sentinel_count}
@@ -126,7 +142,7 @@ async function loadData() {
 
 loadData();
 
-setInterval(loadData, 30000);
+setInterval(loadData, 60000);
 
 
 

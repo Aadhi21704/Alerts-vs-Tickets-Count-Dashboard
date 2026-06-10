@@ -2,17 +2,19 @@ from datetime import datetime, timedelta, UTC
 
 import requests
 
-
 from config import (
-    ALLOWED_CLIENTS,
-    DAYS_BACK,
-    SENTINELONE_URL
+    MSSP_ALLOWED_CLIENTS,
+    RESSELLER_EXCLUDED_CLIENTS,
+    DAYS_BACK
 )
 
 
-def fetch_sentinelone_alerts(api_token):
-
-    url = SENTINELONE_URL
+def fetch_sentinelone_alerts(
+    source_name,
+    url,
+    api_token,
+    filter_clients
+):
 
     created_after = (
         datetime.now(UTC)
@@ -39,36 +41,47 @@ def fetch_sentinelone_alerts(api_token):
 
     data = response.json()
 
-    alerts = (
-        data.get("data", [])
+    alerts = data.get(
+        "data",
+        []
     )
 
-    alerts = [
-        {
-            "id": alert["id"],
-            "client":
-                alert
-                .get(
-                    "agentDetectionInfo",
-                    {}
-                )
-                .get(
-                    "siteName",
-                    "Unknown"
-                )
-        }
-        for alert in alerts
-        if (
+    filtered_alerts = []
+
+    for alert in alerts:
+
+        site_name = (
             alert
             .get(
                 "agentDetectionInfo",
                 {}
             )
             .get(
-                "siteName"
+                "siteName",
+                "Unknown"
             )
-            in ALLOWED_CLIENTS
         )
-    ]
 
-    return alerts
+        if (
+            source_name == "reseller"
+            and
+            site_name in RESSELLER_EXCLUDED_CLIENTS
+        ):
+            continue
+
+        if (
+            filter_clients
+            and
+            site_name not in MSSP_ALLOWED_CLIENTS
+        ):
+            continue
+
+        filtered_alerts.append(
+            {
+                "id": alert["id"],
+                "client": site_name,
+                "source": source_name
+            }
+        )
+
+    return filtered_alerts

@@ -12,9 +12,14 @@ def compare_data(sentinel_alerts, jira_tickets):
         if client not in clients:
             clients[client] = {
                 "client": client,
+                "sources": set(),
                 "sentinel_alerts": [],
                 "jira_tickets": []
             }
+
+        clients[client]["sources"].add(
+            alert.get("source", "unknown")
+        )
 
         clients[client]["sentinel_alerts"].append(alert)
 
@@ -25,6 +30,7 @@ def compare_data(sentinel_alerts, jira_tickets):
         if client not in clients:
             clients[client] = {
                 "client": client,
+                "sources": set(),
                 "sentinel_alerts": [],
                 "jira_tickets": []
             }
@@ -37,6 +43,9 @@ def compare_data(sentinel_alerts, jira_tickets):
 
         result.append({
             "client": client["client"],
+            "sources": sorted(
+                list(client["sources"])
+            ),
             "sentinel_count": len(
                 client["sentinel_alerts"]
             ),
