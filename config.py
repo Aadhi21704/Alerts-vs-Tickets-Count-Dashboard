@@ -2,6 +2,7 @@ DAYS_BACK = 7
 
 REFRESH_INTERVAL_MINUTES = 5
 
+# SentinelOne
 MSSP_ALLOWED_CLIENTS = [
     "QuisLex",
     "CapLaw",
@@ -34,6 +35,27 @@ SENTINELONE_SOURCES = [
     }
 ]
 
+# Wazuh
+WAZUH_URL = (
+    "https://whb.nopalcyber.com/api/v1/integrations/wazuh-alert-counts"
+)
+
+WAZUH_MIN_RULE_LEVEL = 5
+
+WAZUH_ALLOWED_CLIENTS = [
+    "Progility",
+    "NCC",
+    "Rainbow_Children_Hospitals"
+]
+
+WAZUH_CLIENT_MAPPING = {
+    "Progility": "Progility",
+    "NCC": "NCC-Bihar",
+    "Rainbow_Children_Hospitals":
+        "Rainbow_Children_Hospitals"
+}
+
+# JIRA
 JIRA_URL = (
     "https://nopalcyber.atlassian.net/rest/api/3/search/jql"
 )
