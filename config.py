@@ -86,3 +86,5 @@ WAZUH_CLIENT_MAPPING = {
 JIRA_URL = (
     "https://nopalcyber.atlassian.net/rest/api/3/search/jql"
 )
+
+WAZUH_JIRA_TENANT_FIELD = "customfield_10202"
