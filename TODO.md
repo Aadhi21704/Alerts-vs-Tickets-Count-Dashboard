@@ -1,117 +1,29 @@
 # TODO
 
+## Completed
+
+### Dashboard Foundation
+
+* [x] Canonical `tools[]` dashboard schema
+* [x] Home → Tool → Client navigation
+* [x] Dynamic tool routing
+* [x] Dynamic client routing
+* [x] Tool pages
+* [x] Client pages
+* [x] Client drilldowns
+* [x] Alert ID display
+* [x] Jira Ticket ID display
+* [x] Managed client registry
+* [x] MSSP source tags
+* [x] Reseller source tags
+* [x] SentinelOne dashboard integration
+* [x] SentinelOne Jira comparison
+* [x] Greenko EDR exclusion
+* [x] Tool-card homepage
+
+---
+
 ## High Priority
-
-### Dashboard Schema Refactor
-
-Current:
-
-clients
-
-Future:
-
-tools → clients
-
-Target:
-
-{
-"tools": [
-{
-"tool": "SentinelOne",
-"total_alerts": 0,
-"total_tickets": 0,
-"clients": [...]
-}
-]
-}
-
-Reason:
-
-The dashboard is evolving from a SentinelOne-specific dashboard into a generic Tool-vs-Jira dashboard.
-
-Status:
-
-Not started.
-
----
-
-### Dashboard Navigation Refactor
-
-Current:
-
-Single page dashboard.
-
-Future:
-
-Page 1:
-
-/
-
-Home Dashboard
-
-Displays:
-
-* Tool cards
-* Total alerts
-* Total tickets
-* Mismatch summary
-* Future charts
-* Future KPIs
-
-↓
-
-Page 2:
-
-/tool/{tool_name}
-
-Displays:
-
-* Tool summary
-* Client list
-
-↓
-
-Page 3:
-
-/tool/{tool_name}/client/{client_name}
-
-Displays:
-
-* Alert IDs
-* Jira Ticket IDs
-* Client-level counts
-
-Status:
-
-Not started.
-
----
-
-### Dynamic Tool Routing
-
-Implement reusable routing.
-
-Preferred routes:
-
-/tool/{tool_name}
-
-/tool/{tool_name}/client/{client_name}
-
-Examples:
-
-/tool/sentinelone
-
-/tool/wazuh
-
-/tool/securonix
-
-Do not create hardcoded pages for each tool.
-
-Status:
-
-Not started.
-
----
 
 ### Wazuh Collector
 
@@ -122,22 +34,31 @@ collectors/wazuh.py
 Responsibilities:
 
 * Call WHB API
+* Retrieve client alert counts
 * Apply allowlist filtering
 * Apply client mapping
 * Normalize data
+* Return comparison-ready output
+
+Current source:
+
+WHB API
 
 Current endpoint:
 
 https://whb.nopalcyber.com/api/v1/integrations/wazuh-alert-counts
 
-Current filters:
+Current parameters:
 
 hours=24
-min_rule_level=5
+
+Current threshold:
+
+Rule Level >= 5
 
 Status:
 
-Not started.
+Not started
 
 ---
 
@@ -151,35 +72,100 @@ Client source:
 
 Tenant Name
 
-Map Jira tickets to Wazuh clients.
+Requirements:
+
+* Extract client names
+* Apply mappings
+* Produce comparison-ready Jira records
 
 Status:
 
-Not started.
+Not started
 
 ---
 
-### Wazuh Comparator
+### Wazuh Comparator Integration
 
-Compare:
+Integrate Wazuh into the existing comparison workflow.
 
-Wazuh alerts ↔ Jira tickets
+Requirements:
 
-Maintain the same comparison behavior currently used for SentinelOne.
+* Reuse existing comparison behavior
+* Reuse managed client framework where applicable
+* Preserve tool-agnostic architecture
 
 Status:
 
-Not started.
+Not started
+
+---
+
+### Wazuh Dashboard Integration
+
+Add Wazuh to:
+
+latest.json
+
+Requirements:
+
+* Appear as a separate tool card
+* Use existing navigation structure
+* Require no UI redesign
+
+Expected result:
+
+Home
+↓
+SentinelOne
+
+Wazuh
+
+Status:
+
+Not started
 
 ---
 
 ## Medium Priority
 
-### Common Tool Schema
+### Client Normalization Framework
 
-All collectors should return normalized structures.
+Current issue:
 
-Preferred structure:
+Observed client names may differ from managed client names.
+
+Example:
+
+AM Green
+
+vs
+
+AM Green Ammonia Pvt Ltd
+
+Future structure:
+
+CLIENT_MAPPINGS = {
+"sentinelone": {},
+"wazuh": {}
+}
+
+Purpose:
+
+* Prevent duplicate client identities
+* Provide canonical client naming
+* Improve dashboard consistency
+
+Status:
+
+Planned
+
+---
+
+### Generic Tool Schema
+
+Continue migration toward fully normalized tool output.
+
+Target structure:
 
 {
 "tool": "",
@@ -189,85 +175,89 @@ Preferred structure:
 "source": ""
 }
 
-Reason:
+Purpose:
 
-Allows all future tools to plug into the same comparison engine.
-
-Status:
-
-Planned.
-
----
-
-### Generic Client Mapping Framework
-
-Current:
-
-WAZUH_CLIENT_MAPPING
-
-Future:
-
-CLIENT_MAPPINGS = {
-"wazuh": {...},
-"sentinelone": {...},
-"securonix": {...}
-}
+* Simplify onboarding future tools
+* Reduce vendor-specific logic
 
 Status:
 
-Planned.
+Planned
 
 ---
 
 ### Tool-Agnostic Comparator
 
-Current:
+Current comparator still contains SentinelOne-oriented assumptions.
 
-Comparator is SentinelOne-oriented.
+Goal:
 
-Future:
+Comparator should operate entirely on normalized tool data.
 
-Comparator operates on normalized tool data regardless of vendor.
+Requirements:
+
+* No vendor-specific branching
+* Reusable across all tools
 
 Status:
 
-Planned.
+Planned
 
 ---
 
-## Future
+## Low Priority
+
+### Dashboard Metrics
+
+Add:
+
+* Mismatch counts
+* Equal counts
+* Tool health summaries
+
+Status:
+
+Future
+
+---
 
 ### Dashboard Visualizations
 
 Potential additions:
 
-* Tool-level charts
 * Alert trends
 * Ticket trends
 * Mismatch trends
-* Tool health summaries
+* Tool summaries
 
-Charts should live on the Home Dashboard page.
+Requirements:
 
-Do not design charts at client level.
+* Home dashboard only
+* Optional tool-level views
 
 Status:
 
-Future.
+Future
 
 ---
 
 ### Teams Notifications
 
-When mismatches occur:
+Workflow:
 
 Mismatch
 ↓
 Teams Notification
 
+Requirements:
+
+* Tool context
+* Client context
+* Count summary
+
 Status:
 
-Future.
+Future
 
 ---
 
@@ -279,34 +269,27 @@ Potential future tools:
 * Microsoft Defender
 * CrowdStrike
 * FortiAnalyzer
-* Other security platforms
+
+Requirements:
+
+* Plug into existing architecture
+* No dashboard redesign
 
 Status:
 
-Future.
+Future
 
 ---
 
-### Alert ID Drilldowns
+## Notes
 
-Current:
+Current active development focus:
 
-Count comparison is sufficient.
+1. Wazuh Collector
+2. Wazuh Jira Integration
+3. Wazuh Comparator
+4. Wazuh Dashboard Integration
 
-Future:
+Do not redesign the dashboard unless explicitly requested.
 
-Display alert IDs when available.
-
-Example:
-
-SentinelOne:
-
-* Already available
-
-Wazuh:
-
-* Waiting for WHB API enhancement
-
-Status:
-
-Future.
+Prefer extending the existing architecture over introducing new patterns.

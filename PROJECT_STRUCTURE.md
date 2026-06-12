@@ -1,93 +1,224 @@
 # PROJECT STRUCTURE
 
-## Purpose
+## Overview
 
-This project validates security alerts from multiple security tools against Jira tickets.
+This project validates security alerts against Jira tickets.
 
-The architecture is evolving from:
+Architecture:
 
-SentinelOne ↔ Jira
+Tool Collectors
+↓
+Comparator
+↓
+Dashboard Schema
+(latest.json)
+↓
+FastAPI
+↓
+Dashboard UI
 
-to:
-
-Tool ↔ Jira
-
-where Tool may include:
-
-* SentinelOne
-* Wazuh
-* Securonix
-* Microsoft Defender
-* CrowdStrike
-* Future security platforms
-
-The architecture should remain generic and reusable.
+Responsibilities must remain clearly separated.
 
 ---
 
-# Current Structure
+# Root Directory
 
-config.py
+## config.py
 
 Purpose:
 
-Centralized configuration.
+Centralized project configuration.
 
 Contains:
 
-* URLs
-* Refresh intervals
+* API endpoints
+* Tool settings
 * Allowlists
 * Exclusions
 * Client mappings
-* Tool-specific configuration
+* Managed client registries
+* Jira configuration
+
+Must not contain:
+
+* Collection logic
+* Dashboard logic
+* API calls
 
 ---
 
-collectors/
+## run.py
 
 Purpose:
 
-Fetch and normalize tool data.
+Main collection orchestration.
 
 Responsibilities:
 
-* API calls
-* Data collection
+* Run collectors
+* Run Jira collection
+* Run comparison
+* Build dashboard schema
+* Write latest.json
+
+Must not contain:
+
+* UI logic
+* Template logic
+
+---
+
+## scheduler.py
+
+Purpose:
+
+Scheduled execution.
+
+Responsibilities:
+
+* Trigger run.py
+* Control execution intervals
+
+Must not contain:
+
+* Collection logic
+* Comparison logic
+* UI logic
+
+---
+
+## latest.json
+
+Purpose:
+
+Canonical dashboard data source.
+
+Current structure:
+
+```json id="eywd2r"
+{
+  "timestamp": "",
+  "tools": []
+}
+```
+
+All dashboard pages consume data derived from this file.
+
+---
+
+# collectors/
+
+Purpose:
+
+Tool-specific data collection.
+
+Responsibilities:
+
+* API communication
+* Data retrieval
 * Filtering
-* Data normalization
+* Mapping
+* Normalization
 
 Examples:
 
-collectors/sentinelone.py
+```text id="a3rjpb"
+collectors/
+├─ sentinelone.py
+├─ wazuh.py
+```
 
-collectors/wazuh.py
+Collectors must not:
 
-Future:
-
-collectors/securonix.py
-
-collectors/defender.py
+* Render UI
+* Compare data
+* Generate dashboard output
 
 ---
 
-comparison/
+## collectors/sentinelone.py
 
 Purpose:
 
-Compare tool data against Jira data.
+Collect SentinelOne alerts.
+
+Sources:
+
+* MSSP
+* Reseller
 
 Responsibilities:
 
-* Group data
-* Compare counts
-* Build comparison results
-
-Should eventually become tool-agnostic.
+* Fetch alerts
+* Apply filtering
+* Normalize records
 
 ---
 
-app/
+## collectors/wazuh.py
+
+Purpose:
+
+Collect Wazuh alert data.
+
+Source:
+
+WHB API
+
+Responsibilities:
+
+* Fetch Wazuh data
+* Apply allowlists
+* Apply mappings
+* Normalize records
+
+Status:
+
+Planned / In Progress
+
+---
+
+# comparison/
+
+Purpose:
+
+Alert-to-ticket comparison.
+
+Responsibilities:
+
+* Compare tool alerts
+* Compare Jira tickets
+* Generate statuses
+* Generate client comparison results
+
+Must not:
+
+* Call APIs
+* Render UI
+* Read templates
+
+---
+
+## comparison/comparator.py
+
+Purpose:
+
+Comparison engine.
+
+Current responsibilities:
+
+* Alert counts
+* Ticket counts
+* Client status
+* Source aggregation
+
+Future goal:
+
+Remain tool-agnostic.
+
+---
+
+# app/
 
 Purpose:
 
@@ -96,12 +227,117 @@ Dashboard application.
 Contains:
 
 * FastAPI routes
-* Dashboard endpoints
-* Frontend serving
+* Template rendering
+* Dashboard presentation
+
+Must not:
+
+* Call vendor APIs directly
+* Perform collection logic
 
 ---
 
-app/static/
+## app/main.py
+
+Purpose:
+
+FastAPI entry point.
+
+Responsibilities:
+
+* Route handling
+* Dashboard data loading
+* Context preparation
+* Template rendering
+
+Current routes:
+
+```text id="ctt9vk"
+/                          Home Dashboard
+/tool/{tool_name}          Tool Dashboard
+/tool/{tool_name}/client/{client_name}
+                           Client Dashboard
+/api/data
+/health
+```
+
+---
+
+# app/templates/
+
+Purpose:
+
+Dashboard HTML templates.
+
+Templates should remain generic.
+
+Current templates:
+
+```text id="4f24qv"
+dashboard.html
+tool.html
+client.html
+```
+
+Responsibilities:
+
+* Presentation
+* Layout
+* Display
+
+Must not contain:
+
+* Business logic
+* Collection logic
+* Comparison logic
+
+---
+
+## dashboard.html
+
+Purpose:
+
+Homepage.
+
+Displays:
+
+* Tool cards
+* Tool summaries
+* Future KPIs
+* Future charts
+
+---
+
+## tool.html
+
+Purpose:
+
+Tool-level dashboard.
+
+Displays:
+
+* Tool counts
+* Client list
+* Source tags
+
+---
+
+## client.html
+
+Purpose:
+
+Client drilldown page.
+
+Displays:
+
+* Alert counts
+* Ticket counts
+* Alert IDs
+* Jira Ticket IDs
+
+---
+
+# app/static/
 
 Purpose:
 
@@ -112,315 +348,143 @@ Contains:
 * CSS
 * JavaScript
 
-Responsibilities:
+Current files:
 
-* Rendering
-* Navigation
-* User interaction
-
-Must not contain:
-
-* API collection logic
-* Client mappings
-* Business rules
+```text id="1a1vbt"
+style.css
+app.js
+```
 
 ---
 
-app/templates/
+## style.css
 
 Purpose:
 
-Frontend templates.
-
-Contains:
-
-* HTML templates
+Dashboard styling.
 
 Responsibilities:
 
 * Layout
-* Page structure
+* Cards
+* Navigation styling
+* Responsive behavior
 
 ---
 
-run.py
+## app.js
 
 Purpose:
 
-Main collection orchestrator.
+Frontend interactions.
 
-Responsibilities:
+Current responsibilities:
 
-* Execute collectors
-* Execute Jira collection
-* Execute comparison
-* Generate dashboard data
+* Dashboard refresh
+* Client expansion behavior
+* Data rendering
+
+Future responsibilities:
+
+* Dashboard enhancements
+* Visualization support
+
+Avoid placing business logic here.
 
 ---
 
-scheduler.py
+# logs/
 
 Purpose:
 
-Scheduled execution.
-
-Responsibilities:
-
-* Trigger dashboard refreshes
-* Run collection jobs on schedule
-
----
-
-latest.json
-
-Purpose:
-
-Dashboard data output.
-
-Acts as the current dashboard data source.
-
-Generated automatically.
-
-Should never contain secrets.
-
-Should never be committed.
-
----
-
-logs/
-
-Purpose:
-
-Application logging.
+Application logs.
 
 Contains:
 
-* Dashboard logs
 * Collection logs
+* Runtime logs
 * Error logs
 
-Should never contain secrets.
+Must never contain:
+
+* Secrets
+* Credentials
+* Tokens
 
 ---
 
-# Current Data Flow
+# Future Structure
 
-Tool Collector
-↓
-Normalized Tool Data
-↓
-Jira Collector
-↓
+Expected future additions:
+
+```text id="84trxt"
+collectors/
+├─ sentinelone.py
+├─ wazuh.py
+├─ securonix.py
+├─ defender.py
+```
+
+The architecture should scale by adding new collectors rather than redesigning existing folders.
+
+---
+
+# Ownership Rules
+
+Collectors
+
+Responsible for:
+
+* Data collection
+* Data normalization
+
+---
+
 Comparator
-↓
-latest.json
-↓
-FastAPI API
-↓
-Dashboard UI
+
+Responsible for:
+
+* Alert vs ticket comparison
 
 ---
 
-# Current Dashboard
+FastAPI
 
-Current implementation:
+Responsible for:
 
-Single-page dashboard.
-
-Displays:
-
-* Client list
-* Alert counts
-* Ticket counts
-* Alert IDs
-* Jira Ticket IDs
+* Routing
+* Context generation
+* Template rendering
 
 ---
 
-# Future Dashboard Structure
+Templates
 
-The dashboard is moving toward a multi-page architecture.
+Responsible for:
 
----
-
-Page 1
-
-/
-
-Home Dashboard
-
-Displays:
-
-* Tool cards
-* Total alerts
-* Total tickets
-* Mismatch summary
-* Future charts
-* Future KPIs
-
-Examples:
-
-SentinelOne
-
-Wazuh
-
-Securonix
+* Presentation only
 
 ---
 
-Page 2
+Static Assets
 
-/tool/{tool_name}
+Responsible for:
 
-Examples:
-
-/tool/sentinelone
-
-/tool/wazuh
-
-/tool/securonix
-
-Displays:
-
-* Tool summary
-* Tool counts
-* Client list
-* Future tool-level visualizations
+* Styling
+* Frontend behavior
 
 ---
 
-Page 3
+Configuration
 
-/tool/{tool_name}/client/{client_name}
+Responsible for:
 
-Examples:
-
-/tool/sentinelone/client/quislex
-
-/tool/wazuh/client/ncc-bihar
-
-Displays:
-
-* Alert IDs
-* Jira Ticket IDs
-* Client-level counts
-* Future drilldowns
+* All environment-specific settings
+* Client metadata
+* Tool metadata
 
 ---
 
-# Routing Philosophy
+Keep responsibilities separated.
 
-Use reusable dynamic routes.
-
-Preferred:
-
-/tool/{tool_name}
-
-/tool/{tool_name}/client/{client_name}
-
-Avoid:
-
-/sentinelone
-
-/wazuh
-
-/securonix
-
-The UI should automatically support future tools.
-
----
-
-# Current Schema
-
-Current dashboard structure:
-
-{
-"clients": [...]
-}
-
----
-
-# Future Schema
-
-Target structure:
-
-{
-"tools": [
-{
-"tool": "SentinelOne",
-"total_alerts": 0,
-"total_tickets": 0,
-"clients": [...]
-}
-]
-}
-
-This schema should support any future tool without requiring UI redesign.
-
----
-
-# Normalized Tool Schema
-
-Preferred collector output:
-
-{
-"tool": "",
-"client": "",
-"count": 0,
-"alerts": [],
-"source": ""
-}
-
-Reason:
-
-Allows collectors to normalize vendor-specific data before comparison.
-
-The comparator should not need vendor-specific knowledge.
-
----
-
-# Responsibility Rules
-
-Collectors must not:
-
-* Modify UI
-* Render HTML
-* Implement dashboard routing
-
----
-
-Comparator must not:
-
-* Call vendor APIs
-* Render UI
-* Contain dashboard logic
-
----
-
-Dashboard must not:
-
-* Fetch vendor data directly
-* Contain client mappings
-* Implement comparison logic
-
----
-
-Configuration must live in:
-
-config.py
-
-and not be duplicated elsewhere.
-
----
-
-# Future Features
-
-Planned:
-
-* Wazuh integration
-* Tool-level dashboards
-* Dashboard visualizations
-* Teams notifications
-* Additional security tool integrations
-
-The architecture should support these features without major redesign.
+Do not move functionality across layers without explicit architectural justification.

@@ -4,359 +4,330 @@
 
 * Make the smallest change possible.
 * Do not rewrite working code.
-* Do not reformat unrelated files.
-* Preserve existing code style.
-* Prefer incremental improvements over large refactors.
-* Avoid introducing unnecessary complexity.
+* Do not redesign stable architecture.
+* Prefer extending existing implementations.
+* Preserve existing behavior unless explicitly requested otherwise.
 
 ---
 
-## Before Making Changes
+# Before Making Changes
 
-Always provide:
+Always identify:
 
 1. Files to modify
 2. Reason for modification
 3. Risks
-4. Proposed implementation plan
+4. Implementation plan
 
-For multi-file changes, wait for approval before modifying code.
-
----
-
-## Development Philosophy
-
-The project is actively evolving.
-
-Prioritize:
-
-1. Stability
-2. Maintainability
-3. Scalability
-4. Speed of implementation
-
-Avoid premature optimization.
-
-Avoid building functionality that is not currently required.
+Before implementing multi-file changes, present the plan first and wait for approval.
 
 ---
 
-## Architecture Rules
+# Scope Control
 
-Maintain separation of concerns.
+Stay focused on the requested task.
 
-### Collectors
+Do not:
 
-Collectors are responsible only for:
+* Refactor unrelated code
+* Rename unrelated variables
+* Reformat unrelated files
+* Introduce side changes
 
-* Fetching data
-* Filtering data
-* Normalizing data
+If an unrelated issue is discovered:
 
-Collectors must not:
-
-* Render UI
-* Generate HTML
-* Perform dashboard presentation logic
-* Contain routing logic
-
----
-
-### Comparator
-
-Comparator is responsible only for:
-
-* Comparing tool data against Jira data
-* Producing comparison results
-
-Comparator must not:
-
-* Call APIs
-* Render UI
-* Contain vendor-specific API logic
-
-The long-term goal is a tool-agnostic comparator.
-
----
-
-### Dashboard
-
-Dashboard is responsible only for:
-
-* Displaying information
-* Navigation
-* User interaction
-
-Dashboard must not:
-
-* Perform data collection
-* Contain API-specific logic
-* Contain client mappings
-* Contain filtering rules
-
----
-
-### Configuration
-
-All configuration belongs in config.py.
-
-Examples:
-
-* URLs
-* Thresholds
-* Client allowlists
-* Client exclusions
-* Client mappings
-* Refresh intervals
-
-Do not hardcode configuration values elsewhere.
-
----
-
-## Frontend Guidelines
-
-### Current Stack
-
-* FastAPI
-* HTML
-* CSS
-* Vanilla JavaScript
-
-Do not introduce:
-
-* React
-* Vue
-* Angular
-* Django
-* Streamlit
+* Document it
+* Report it
+* Do not automatically fix it
 
 unless explicitly requested.
 
 ---
 
-### Future Navigation Structure
+# Existing Architecture
 
-Design frontend code with the following structure in mind:
+The following architecture is already implemented:
 
-Page 1:
-
-/
-
-Home Dashboard
-
+Home
 ↓
-
-Page 2:
-
-/tool/{tool_name}
-
+Tool
 ↓
+Client
 
-Page 3:
+Do not redesign this navigation structure.
 
-/tool/{tool_name}/client/{client_name}
-
-Code should support dynamic routing and reusable rendering.
-
-Avoid tool-specific UI implementations.
+Extend it when necessary.
 
 ---
 
-### Reusable UI Components
+# Dashboard Development
 
-Prefer reusable rendering logic.
+Current dashboard architecture is considered stable.
+
+When making dashboard changes:
+
+* Reuse existing routes
+* Reuse existing templates
+* Reuse existing schema
+
+Avoid creating:
+
+* Tool-specific pages
+* Duplicate routes
+* Duplicate templates
+
+The dashboard should remain generic.
+
+---
+
+# Schema Changes
+
+The canonical dashboard structure is:
+
+```json
+{
+  "timestamp": "",
+  "tools": []
+}
+```
+
+All future work should build on this structure.
+
+Do not introduce competing dashboard schemas.
+
+---
+
+# Collectors
+
+Collectors are responsible only for:
+
+* API communication
+* Data retrieval
+* Filtering
+* Mapping
+* Normalization
+
+Collectors must not:
+
+* Generate HTML
+* Contain UI logic
+* Perform dashboard rendering
+* Contain FastAPI route logic
+
+---
+
+# Comparator
+
+Comparator responsibilities:
+
+* Compare alerts
+* Compare tickets
+* Generate statuses
+
+Comparator must not:
+
+* Call APIs
+* Render UI
+* Read templates
+* Generate HTML
+
+Keep comparator logic tool-agnostic whenever possible.
+
+---
+
+# FastAPI Layer
+
+FastAPI is responsible for:
+
+* Routes
+* Data loading
+* Context generation
+* Template rendering
+
+Avoid placing business rules directly in route handlers.
+
+Prefer helper functions when logic becomes reusable.
+
+---
+
+# Templates
+
+Templates should contain presentation logic only.
+
+Allowed:
+
+* Loops
+* Conditionals
+* Display formatting
 
 Avoid:
 
-if tool == "sentinelone":
-...
+* Business logic
+* Complex calculations
+* Data transformation
 
-if tool == "wazuh":
-...
-
-Instead design generic rendering where possible.
-
-Future tools should work with minimal UI changes.
+Prepare data before sending it to templates.
 
 ---
 
-### Dashboard Visualizations
+# Configuration
 
-Future charts and visualizations should live:
+Configuration belongs in:
 
-* Home Dashboard
-* Tool Pages
+config.py
 
-Do not build client-level charts unless explicitly requested.
+Examples:
 
----
+* API endpoints
+* Client mappings
+* Managed client registries
+* Allowlists
+* Exclusions
+* Tool settings
 
-## Data Schema Guidelines
-
-The project is moving toward a normalized tool schema.
-
-Preferred structure:
-
-{
-"tool": "",
-"client": "",
-"count": 0,
-"alerts": [],
-"source": ""
-}
-
-Collectors should normalize vendor-specific data into this structure.
-
-Avoid tool-specific data structures leaking into shared code.
+Do not hardcode configuration values elsewhere.
 
 ---
 
-## SentinelOne Guidelines
+# Client Names
 
-### MSSP
+Client names should be treated as canonical identifiers.
 
-Uses allowlist filtering.
+When normalization is required:
 
-Controlled through:
+* Normalize at the collection/comparison layer
+* Do not normalize inside templates
 
-MSSP_ALLOWED_CLIENTS
-
----
-
-### Reseller
-
-Does not use allowlist filtering.
-
-Uses exclusions only.
+Future client mapping logic should remain centralized.
 
 ---
 
-### Greenko
+# Error Handling
 
-Greenko-Energy-EDR must remain excluded.
+Prefer explicit error handling.
 
-Reason:
+Avoid:
 
-Only MDR is managed.
+```python
+except:
+    pass
+```
 
-EDR alerts do not generate Jira tickets.
+Use:
 
-Current exclusion:
+```python
+except SpecificException:
+```
 
-RESSELLER_EXCLUDED_CLIENTS
+whenever practical.
 
-Do not remove unless explicitly requested.
-
----
-
-## Wazuh Guidelines
-
-Current allowed clients:
-
-* Progility
-* NCC
-* Rainbow_Children_Hospitals
-
-Current mapping:
-
-NCC → NCC-Bihar
-
-Rainbow deployment may not yet exist.
-
-Do not create placeholder entries.
+Do not silently discard useful debugging information.
 
 ---
 
-### Wazuh Source
+# Logging
 
-Current source:
+Preserve useful logs.
 
-WHB API
+Log:
 
-Current assumptions:
+* Collection failures
+* API failures
+* Mapping issues
+* Comparison issues
 
-* latest_per_client aggregation
-* Rule Level >= 5
-* 24 hour window
+Do not log:
 
-Do not change these assumptions without approval.
+* Tokens
+* Passwords
+* Secrets
 
----
-
-## Logging Guidelines
-
-Preserve useful logging.
-
-Do not remove logging without approval.
-
-Prefer structured logging over ad-hoc debugging.
-
-Avoid unnecessary console output.
+Avoid excessive logging noise.
 
 ---
 
-## Error Handling Guidelines
+# Backward Compatibility
 
-Do not silently swallow exceptions unless explicitly justified.
+When changing schemas or APIs:
 
-Prefer:
+* Provide compatibility layers when needed
+* Avoid breaking working routes immediately
+* Migrate incrementally
 
-* Clear error messages
-* Logged failures
-* Safe fallbacks
-
-Avoid hiding failures.
+Remove compatibility code only after migration is complete.
 
 ---
 
-## Security Guidelines
+# Testing
+
+Whenever significant functionality changes:
+
+Validate:
+
+* Existing behavior
+* New behavior
+* Edge cases
+
+Particularly validate:
+
+* Alert-only clients
+* Ticket-only clients
+* Managed clients
+* Zero-count clients
+* Source tags
+* Client drilldowns
+
+---
+
+# Future Tool Integrations
+
+Future tools should integrate through:
+
+1. Collector
+2. Jira integration
+3. Comparator
+4. Dashboard schema
+
+Do not create custom dashboard implementations for individual tools.
+
+The goal is:
+
+Tool
+↓
+Normalized Data
+↓
+Comparator
+↓
+Dashboard
+
+for every supported platform.
+
+---
+
+# Security
 
 Never:
 
-* Commit .env
+* Commit secrets
 * Commit credentials
 * Commit API tokens
-* Expose secrets in logs
-* Hardcode credentials
 
-Sensitive information must always come from environment variables.
+Never print sensitive values to logs.
 
----
-
-## Git Workflow
-
-Before significant changes:
-
-Create a feature branch.
-
-Example:
-
-git checkout -b feature/tool-dashboard
-
-Work should be grouped into focused commits.
-
-Avoid mixing unrelated changes in a single commit.
+Always assume repositories may eventually become shared.
 
 ---
 
-## AI Assistant Workflow
+# Preferred Development Approach
 
-When working on this repository:
+For large tasks:
 
-1. Read:
+1. Analyze
+2. Design
+3. Review
+4. Implement
+5. Validate
 
-   * PROJECT_RULES.md
-   * ARCHITECTURE.md
-   * TODO.md
-   * CODING_GUIDELINES.md
-   * PROJECT_STRUCTURE.md
+Avoid implementing before the design has been reviewed.
 
-2. Analyze before modifying.
-
-3. Explain the implementation plan.
-
-4. Make the smallest necessary change.
-
-5. Preserve existing functionality.
-
-Architecture decisions documented in project documentation take precedence over assumptions.
+This project values correctness and maintainability over speed.

@@ -19,39 +19,64 @@ where a Tool can be:
 * Securonix
 * Microsoft Defender
 * CrowdStrike
-* FortiAnalyzer
 * Future security platforms
 
-The architecture must remain generic and reusable for future security tools.
+The architecture must support onboarding additional tools without requiring dashboard redesign.
 
 ---
 
-## Critical Development Rules
+# Current Project State
 
-### Rule 1
+The following items are considered completed and should not be reimplemented:
+
+* Canonical `tools[]` dashboard schema
+* Home → Tool → Client navigation
+* Dynamic tool routing
+* Dynamic client routing
+* Tool pages
+* Client pages
+* Managed client registry
+* Source tags
+* SentinelOne dashboard integration
+* SentinelOne Jira integration
+* SentinelOne comparator integration
+* Alert ID drilldowns
+* Jira Ticket ID drilldowns
+
+Future work should extend this architecture rather than replace it.
+
+---
+
+# Critical Development Rules
+
+## Rule 1
 
 Do not redesign working code unless explicitly requested.
 
 Prefer minimal, targeted changes.
 
-Avoid large rewrites.
+Avoid large-scale rewrites.
 
 ---
 
-### Rule 2
+## Rule 2
 
-Before modifying multiple files, analyze first and provide:
+Before modifying multiple files:
+
+Analyze and present:
 
 1. Files to modify
 2. Reason for modification
 3. Risks
-4. Proposed implementation plan
+4. Implementation plan
 
-Wait for approval before applying changes.
+Wait for approval before making changes.
 
 ---
 
-### Rule 3
+## Rule 3
+
+Do not introduce new frameworks.
 
 Current stack:
 
@@ -60,211 +85,211 @@ Current stack:
 * CSS
 * Vanilla JavaScript
 
-Do not introduce:
+Do not migrate to:
 
 * Django
 * Streamlit
 * React
-* New frontend frameworks
+* Vue
+* Angular
 
 unless explicitly requested.
 
 ---
 
-### Rule 4
+## Rule 4
+
+Do not duplicate architecture.
+
+If a feature already exists:
+
+* Extend it
+* Reuse it
+
+Do not create parallel implementations.
+
+Examples:
+
+* Reuse tool routing
+* Reuse comparator behavior
+* Reuse dashboard schema
+
+---
+
+## Rule 5
+
+Preserve backward compatibility whenever practical.
+
+Existing routes and functionality should continue working unless explicitly replaced.
+
+---
+
+## Rule 6
 
 Do not hardcode client-specific logic outside config.py.
 
 The following belong in config.py:
 
-* Client allowlists
-* Client exclusions
+* Allowlists
+* Exclusions
 * Client mappings
-* Tool-specific configuration
+* Managed client registries
+* Tool configuration
 
 ---
 
-### Rule 5
+## Rule 7
 
-Preserve backward compatibility whenever possible.
+Do not place business logic in templates.
 
-Avoid breaking existing dashboard functionality.
+Templates are presentation only.
 
----
+Business logic belongs in:
 
-### Rule 6
-
-Collectors must not contain UI logic.
-
-UI must not contain collector logic.
-
-Comparator must not contain API calls.
-
-Maintain separation of concerns.
+* Collectors
+* Comparator
+* FastAPI backend
 
 ---
 
-## Dashboard Rules
+# Dashboard Rules
 
-### Current Direction
+## Navigation
 
-The dashboard is evolving into a multi-page monitoring platform.
+Current navigation model:
 
-Do not assume the dashboard will remain a single page.
+Home
+↓
+Tool
+↓
+Client
+
+This navigation model is considered stable.
+
+Do not redesign it unless explicitly requested.
 
 ---
 
-### Required Navigation Structure
+## Homepage
 
-Page 1:
-
-/
-
-Home Dashboard
-
-Displays:
+The homepage should focus on:
 
 * Tool cards
-* Total alerts
-* Total tickets
-* Mismatch summary
-* Future charts
-* Future KPIs
+* Tool summaries
+* Dashboard KPIs
+* Future visualizations
 
-Clicking a tool navigates to:
-
-/tool/{tool_name}
+The homepage should NOT become a client listing page again.
 
 ---
 
-Page 2:
+## Tool Pages
 
-/tool/{tool_name}
-
-Displays:
+Tool pages should display:
 
 * Tool summary
 * Client list
-* Tool-level metrics
+* Source tags
+* Alert counts
+* Ticket counts
 
-Clicking a client navigates to:
+Tool pages must remain generic.
 
-/tool/{tool_name}/client/{client_name}
+No tool-specific UI pages should be created.
 
 ---
 
-Page 3:
+## Client Pages
 
-/tool/{tool_name}/client/{client_name}
+Client pages are the primary drilldown layer.
 
-Displays:
+Client pages should display:
 
+* Alert counts
+* Ticket counts
 * Alert IDs
 * Jira Ticket IDs
-* Client counts
-* Future drilldowns
+
+Additional future drilldowns should be added here rather than creating additional navigation levels.
 
 ---
 
-### Routing Rules
+# SentinelOne Rules
 
-Use reusable dynamic routes.
+## Sources
 
-Preferred structure:
+Current sources:
 
-/tool/{tool_name}
-
-/tool/{tool_name}/client/{client_name}
-
-Examples:
-
-/tool/sentinelone
-
-/tool/wazuh
-
-/tool/securonix
-
-Do not create separate hardcoded pages for each tool.
-
-The UI must automatically support new tools.
+* MSSP
+* Reseller
 
 ---
 
-### Visualization Rules
-
-Future charts and visualizations belong on:
-
-Home Dashboard
-
-and optionally:
-
-Tool pages
-
-Do not design charts at the client level.
-
----
-
-## SentinelOne Rules
-
-### MSSP
+## MSSP
 
 Uses allowlist filtering.
 
-Allowed clients are configured in:
+Configured through:
 
 MSSP_ALLOWED_CLIENTS
 
 ---
 
-### Reseller
+## Reseller
 
-Does NOT use allowlist filtering.
+Uses exclusion filtering.
 
-Only exclusions should be used.
-
----
-
-### Greenko
-
-Greenko-Energy-EDR must always be excluded.
-
-Reason:
-
-Only MDR is managed.
-
-EDR alerts do not generate Jira tickets.
-
-This exclusion currently exists in:
+Configured through:
 
 RESSELLER_EXCLUDED_CLIENTS
 
-Do not remove unless explicitly requested.
+---
+
+## Greenko
+
+Greenko-Energy-EDR must always remain excluded.
+
+Reason:
+
+We do not manage EDR for Greenko.
+
+EDR alerts do not generate Jira tickets.
+
+Do not remove this exclusion unless explicitly requested.
 
 ---
 
-## Wazuh Rules
+## Managed Client Registry
 
-Current allowed clients:
+Dashboard visibility must be controlled independently from collector filtering.
 
-* Progility
-* NCC
-* Rainbow_Children_Hospitals
+Clients should remain visible even when:
 
-Current mapping:
+* Alert count = 0
+* Ticket count = 0
 
-NCC → NCC-Bihar
-
-Rainbow_Children_Hospitals → Rainbow_Children_Hospitals
-
-Rainbow may not appear in data until WHB deployment is completed.
-
-This is expected.
-
-Do not create placeholder clients.
+Do not reuse filtering lists as dashboard visibility lists.
 
 ---
 
-### Wazuh Data Source
+## Source Tags
+
+Current supported source tags:
+
+* MSSP
+* RESELLER
+
+Source tags should be displayed whenever possible.
+
+Unknown source ownership should be displayed as:
+
+UNKNOWN
+
+rather than guessed.
+
+---
+
+# Wazuh Rules
 
 Current source:
 
@@ -274,86 +299,117 @@ Current endpoint:
 
 https://whb.nopalcyber.com/api/v1/integrations/wazuh-alert-counts
 
-Current aggregation:
+Current requirements:
 
-latest_per_client
+* hours = 24
+* rule.level >= 5
 
-Current severity threshold:
+Current allowed clients:
 
-Rule Level >= 5
+* Progility
+* NCC
+* Rainbow_Children_Hospitals
 
-Do not change these assumptions unless explicitly requested.
+Current mapping:
 
----
+* NCC → NCC-Bihar
 
-## Jira Rules
+Rainbow may not appear until WHB deployment is completed.
 
-### SentinelOne
+This is expected behavior.
 
-Issue Type = SentinelOne
-
-Client information is extracted from the Site Name field in the Jira description table.
-
----
-
-### Wazuh
-
-Issue Type = Wazuh Alert
-
-Client information comes from Tenant Name.
+Do not create placeholder alerts or clients.
 
 ---
 
-## Alert Relationship
+# Jira Rules
 
-For all currently supported tools:
+## SentinelOne
+
+Issue Type:
+
+SentinelOne
+
+---
+
+## Wazuh
+
+Issue Type:
+
+Wazuh Alert
+
+Client source:
+
+Tenant Name
+
+---
+
+# Alert Relationship
+
+Current assumption:
 
 1 Alert = 1 Jira Ticket
 
-This assumption is critical to comparison logic.
+Comparison logic depends on this assumption.
 
-Do not introduce aggregation logic unless explicitly requested.
-
----
-
-## Future Architecture
-
-All tools should eventually be normalized into a common schema.
-
-Preferred structure:
-
-{
-"tool": "",
-"client": "",
-"count": 0,
-"alerts": [],
-"source": ""
-}
-
-Collectors should normalize vendor-specific data.
-
-Comparators should remain tool-agnostic.
+Do not introduce aggregation logic unless requirements change.
 
 ---
 
-## Future Direction
+# Comparator Rules
 
-Current goal:
+Comparator should move toward tool-agnostic behavior.
 
-Monitor alert counts versus Jira ticket counts.
+Comparator responsibilities:
 
-Future goals:
+* Compare alerts
+* Compare tickets
+* Generate statuses
 
-* Teams notifications
-* Additional tools
-* Tool-level dashboards
-* Dashboard visualizations
+Comparator must not:
 
-Do not implement future features unless explicitly requested.
+* Call APIs
+* Render UI
+* Contain dashboard logic
 
 ---
 
-## Security
+# Future Integrations
+
+Future tools may include:
+
+* Wazuh
+* Securonix
+* Microsoft Defender
+* CrowdStrike
+* FortiAnalyzer
+
+Future integrations should plug into the existing architecture.
+
+They should not require:
+
+* Dashboard redesign
+* Route redesign
+* Template duplication
+
+---
+
+# Future Dashboard Features
+
+Potential additions:
+
+* Tool KPIs
+* Alert trends
+* Ticket trends
+* Mismatch trends
+* Tool health summaries
+* Visual charts
+
+These additions should fit within the existing navigation structure.
+
+---
+
+# Security
 
 Never commit:
 
@@ -362,22 +418,23 @@ Never commit:
 * Secrets
 * Credentials
 
-Never expose credentials in logs.
+Never expose:
 
-Never hardcode credentials in source code.
+* Tokens
+* Passwords
+* Secrets
+
+Never log credentials.
 
 ---
 
-## AI Assistant Rules
+# Current Development Focus
 
-When working on this repository:
+Current priority order:
 
-* Read PROJECT_RULES.md
-* Read ARCHITECTURE.md
-* Read TODO.md
-* Read CODING_GUIDELINES.md
-* Read PROJECT_STRUCTURE.md
+1. Wazuh Collector
+2. Wazuh Jira Integration
+3. Wazuh Comparator Integration
+4. Wazuh Dashboard Integration
 
-before proposing significant changes.
-
-Architecture decisions documented in those files take precedence over assumptions.
+Do not redesign the dashboard while these tasks are in progress.

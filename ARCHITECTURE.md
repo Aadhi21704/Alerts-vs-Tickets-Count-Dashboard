@@ -21,15 +21,15 @@ where a Tool may include:
 * CrowdStrike
 * Future security platforms
 
-The architecture should remain generic and reusable.
+The architecture must remain generic and reusable.
 
 ---
 
 # Current Architecture
 
-Current flow:
+Current implemented flow:
 
-SentinelOne Collector
+Tool Collector
 ↓
 Jira Collector
 ↓
@@ -41,339 +41,36 @@ FastAPI API
 ↓
 Dashboard UI
 
-Current implementation is SentinelOne-focused.
-
-The multi-tool architecture has not yet been fully implemented.
+The dashboard architecture is now tool-based rather than SentinelOne-specific.
 
 ---
 
-# Current Tools
+# Implemented Features
 
-## SentinelOne
+## Canonical Dashboard Schema
 
-Sources:
+Implemented:
 
-* MSSP
-* Reseller
-
-Current status:
-
-Fully integrated.
-
-Features:
-
-* MSSP allowlist filtering
-* Reseller exclusions
-* Greenko EDR exclusion
-* Jira comparison
-* Dashboard integration
-
----
-
-## Wazuh
-
-Source:
-
-WHB API
-
-Current endpoint:
-
-https://whb.nopalcyber.com/api/v1/integrations/wazuh-alert-counts
-
-Current filters:
-
-hours=24
-
-min_rule_level=5
-
-Aggregation:
-
-latest_per_client
-
-Current status:
-
-Integration in progress.
-
-Current allowed clients:
-
-* Progility
-* NCC
-* Rainbow_Children_Hospitals
-
-Current client mapping:
-
-NCC → NCC-Bihar
-
----
-
-# Future Architecture
-
-Target flow:
-
-Tool Collector
-↓
-Normalized Tool Data
-↓
-Jira Collector
-↓
-Comparator
-↓
-Dashboard JSON
-↓
-FastAPI API
-↓
-Dashboard UI
-
-Each tool should normalize its vendor-specific data before comparison.
-
-The comparator should remain tool-agnostic.
-
----
-
-# Dashboard Navigation
-
-## Page 1
-
-/
-
-Home Dashboard
-
-Purpose:
-
-Provide a high-level overview of all integrated tools.
-
-Displays:
-
-* Tool cards
-* Total alerts
-* Total tickets
-* Mismatch summary
-* Future charts
-* Future KPIs
-* Future health summaries
-
-Example:
-
-SentinelOne
-
-Wazuh
-
-Securonix
-
-Clicking a tool navigates to:
-
-/tool/{tool_name}
-
----
-
-## Page 2
-
-/tool/{tool_name}
-
-Purpose:
-
-Display information for a single tool.
-
-Examples:
-
-/tool/sentinelone
-
-/tool/wazuh
-
-/tool/securonix
-
-Displays:
-
-* Tool summary
-* Total alerts
-* Total tickets
-* Client list
-* Future tool-level visualizations
-
-Clicking a client navigates to:
-
-/tool/{tool_name}/client/{client_name}
-
----
-
-## Page 3
-
-/tool/{tool_name}/client/{client_name}
-
-Purpose:
-
-Display client-level details.
-
-Examples:
-
-/tool/sentinelone/client/quislex
-
-/tool/wazuh/client/ncc-bihar
-
-Displays:
-
-* Alert IDs
-* Jira Ticket IDs
-* Counts
-* Future drilldowns
-
----
-
-# Routing Philosophy
-
-Use reusable dynamic routes.
-
-Preferred:
-
-/tool/{tool_name}
-
-/tool/{tool_name}/client/{client_name}
-
-Avoid:
-
-/sentinelone
-
-/wazuh
-
-/securonix
-
-The UI should automatically support future tools without requiring new pages.
-
----
-
-# Current JSON Structure
-
-Current:
-
+```json
 {
-"clients": [...]
+  "timestamp": "...",
+  "tools": [
+    {
+      "tool": "SentinelOne",
+      "tool_key": "sentinelone",
+      "clients": [...]
+    }
+  ]
 }
+```
 
-Current dashboard implementation consumes a client-based structure.
-
----
-
-# Future JSON Structure
-
-Target:
-
-{
-"tools": [
-{
-"tool": "SentinelOne",
-"total_alerts": 0,
-"total_tickets": 0,
-"clients": [...]
-}
-]
-}
-
-This migration has not yet been completed.
-
-The future dashboard should consume tool-based data rather than client-based data.
+This schema is now the source of truth.
 
 ---
 
-# Normalized Tool Schema
+## Dashboard Navigation
 
-Target collector output:
-
-{
-"tool": "",
-"client": "",
-"count": 0,
-"alerts": [],
-"source": ""
-}
-
-This schema is a target architecture and has not yet been fully implemented.
-
-Current SentinelOne collectors still use their existing structures.
-
-Reason:
-
-* Allows comparison logic to remain tool-agnostic.
-* Allows future tools to plug into the same workflow.
-* Prevents vendor-specific logic from leaking into shared code.
-
-Collectors should handle vendor-specific data conversion.
-
-Comparator should not require vendor-specific logic.
-
----
-
-# Design Philosophy
-
-Collectors:
-
-Responsible for:
-
-* Fetching data
-* Filtering data
-* Normalizing data
-
-Collectors should not contain:
-
-* Dashboard logic
-* UI logic
-* Routing logic
-
----
-
-Comparator:
-
-Responsible only for comparison.
-
-Comparator should not:
-
-* Call vendor APIs
-* Render UI
-* Contain dashboard logic
-
----
-
-Dashboard:
-
-Responsible only for presentation.
-
-Dashboard should not:
-
-* Fetch vendor data directly
-* Contain client mappings
-* Implement comparison logic
-
----
-
-Configuration:
-
-Should live in:
-
-config.py
-
-Avoid duplicating configuration elsewhere.
-
----
-
-# Current UI
-
-Technology:
-
-* FastAPI
-* HTML
-* CSS
-* Vanilla JavaScript
-
-Current dashboard:
-
-Client
-├─ Alert IDs
-└─ Jira Ticket IDs
-
-The current UI is operational and should remain functional until the navigation refactor is implemented.
-
----
-
-# Planned UI
+Implemented:
 
 Home Dashboard
 ↓
@@ -381,38 +78,274 @@ Tool Page
 ↓
 Client Page
 
-Home Dashboard:
+Routes:
+
+/
+
+/tool/{tool_name}
+
+/tool/{tool_name}/client/{client_name}
+
+The routing layer is reusable and supports future tools without requiring new pages.
+
+---
+
+## Managed Client Registry
+
+Implemented.
+
+Managed clients appear even when:
+
+alert_count = 0
+ticket_count = 0
+
+Example:
+
+CapLaw
+Alerts: 0
+Tickets: 0
+
+This prevents managed clients from disappearing during inactive periods.
+
+---
+
+## Client Drilldowns
+
+Implemented.
+
+Client pages display:
+
+* Alert IDs
+* Jira Ticket IDs
+* Alert counts
+* Ticket counts
+
+---
+
+## Source Tags
+
+Implemented.
+
+Supported:
+
+[MSSP]
+
+[RESELLER]
+
+These tags are displayed on tool pages.
+
+---
+
+# Current Tools
+
+## SentinelOne
+
+Status:
+
+Fully integrated.
+
+Sources:
+
+* MSSP
+* Reseller
+
+Implemented:
+
+* MSSP allowlist filtering
+* Reseller exclusions
+* Managed client registry
+* Source tagging
+* Jira comparison
+* Dashboard integration
+* Client drilldowns
+
+Current exclusion:
+
+Greenko-Energy-EDR
+
+This exclusion must remain in place.
+
+---
+
+## Wazuh
+
+Status:
+
+Not yet integrated.
+
+Current source:
+
+WHB API
+
+Endpoint:
+
+https://whb.nopalcyber.com/api/v1/integrations/wazuh-alert-counts
+
+Current parameters:
+
+hours=24
+limit=500
+
+Current aggregation:
+
+latest_per_client
+
+Current threshold:
+
+Rule Level >= 5
+
+Current allowed clients:
+
+* Progility
+* NCC
+* Rainbow_Children_Hospitals
+
+Current mapping:
+
+NCC → NCC-Bihar
+
+Expected future architecture:
+
+WHB API
+↓
+Wazuh Collector
+↓
+Normalized Wazuh Data
+↓
+Comparator
+↓
+Dashboard
+
+---
+
+# Current Dashboard Structure
+
+## Page 1
+
+/
+
+Home Dashboard
+
+Displays:
 
 * Tool cards
 * Total alerts
 * Total tickets
-* Mismatch summary
+* Future mismatch summaries
 * Future charts
 * Future KPIs
 
-Tool Page:
+---
+
+## Page 2
+
+/tool/{tool_name}
+
+Displays:
 
 * Tool summary
+* Tool counts
 * Client list
+* Source tags
 
-Client Page:
+Examples:
 
-* Alert IDs
-* Jira Ticket IDs
-* Counts
+/tool/sentinelone
 
-This navigation architecture has not yet been implemented.
+/tool/wazuh
 
 ---
 
-# Future Features
+## Page 3
 
-Planned:
+/tool/{tool_name}/client/{client_name}
 
-* Wazuh integration
-* Tool-level dashboards
+Displays:
+
+* Alert IDs
+* Jira Ticket IDs
+* Alert counts
+* Ticket counts
+
+Examples:
+
+/tool/sentinelone/client/QuisLex
+
+/tool/wazuh/client/NCC-Bihar
+
+---
+
+# Design Philosophy
+
+Collectors
+
+Responsible for:
+
+* Fetching data
+* Filtering data
+* Normalizing data
+
+Collectors must not contain:
+
+* UI logic
+* Dashboard logic
+* Routing logic
+
+---
+
+Comparator
+
+Responsible only for:
+
+* Grouping
+* Comparison
+* Result generation
+
+Comparator must not:
+
+* Call vendor APIs
+* Render UI
+
+---
+
+Dashboard
+
+Responsible only for:
+
+* Presentation
+* Navigation
+* User interaction
+
+Dashboard must not:
+
+* Fetch vendor data directly
+* Contain comparison logic
+* Contain client mappings
+
+---
+
+Configuration
+
+All configuration belongs in:
+
+config.py
+
+Avoid duplicating configuration elsewhere.
+
+---
+
+# Planned Work
+
+Next milestone:
+
+* Wazuh Collector
+* Wazuh Jira Integration
+* Wazuh Comparator
+* Wazuh Dashboard Integration
+
+Future milestones:
+
+* Client normalization framework
 * Dashboard visualizations
 * Teams notifications
 * Additional security tool integrations
-
-The architecture should support these features without requiring major redesign.
