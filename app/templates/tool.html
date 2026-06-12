@@ -1,0 +1,62 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>{{ tool.tool }} Dashboard</title>
+    <link rel="stylesheet" href="/static/style.css">
+</head>
+<body>
+<div class="container">
+    <div class="header-card">
+        <h1>{{ tool.tool }}</h1>
+        <a class="jira-link" href="/">Home Dashboard</a>
+    </div>
+
+    <div class="cards">
+        <div class="card">
+            <h2>Alerts</h2>
+            <span class="count">
+                {{ tool.alert_count }}
+            </span>
+        </div>
+
+        <div class="card">
+            <h2>Tickets</h2>
+            <span class="count">
+                {{ tool.ticket_count }}
+            </span>
+        </div>
+    </div>
+
+    {% for client in tool.clients %}
+    <div class="client-card">
+        <div class="client-header">
+            <a
+                class="jira-link"
+                href="{{ request.url_for(
+                    'client_dashboard',
+                    tool_name=tool.tool_key,
+                    client_name=client.client
+                ) }}"
+            >
+                {{ client.client }}
+
+                {% for source in client.sources %}
+                    [{{ source | upper }}]
+                {% else %}
+                    [UNKNOWN]
+                {% endfor %}
+            </a>
+
+            <span>
+                Alerts: {{ client.alert_count }}
+                |
+                Tickets: {{ client.ticket_count }}
+                |
+                {{ client.status }}
+            </span>
+        </div>
+    </div>
+    {% endfor %}
+</div>
+</body>
+</html>

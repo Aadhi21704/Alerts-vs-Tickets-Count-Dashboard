@@ -116,3 +116,53 @@ body {
     font-size: 14px;
     margin-top: 8px;
 }
+
+.tool-grid {
+    display: grid;
+    grid-template-columns:
+        repeat(auto-fit, minmax(280px, 1fr));
+    gap: 20px;
+}
+
+.tool-card {
+    display: block;
+    background: #1a1a1a;
+    padding: 25px;
+    border-radius: 12px;
+    border: 1px solid #2a2a2a;
+    color: #f5f5f5;
+    text-decoration: none;
+    box-shadow: 0 4px 15px rgba(0,0,0,.4);
+}
+
+.tool-card:hover {
+    background: #222222;
+}
+
+.tool-card-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 20px;
+}
+
+.tool-card-header h2 {
+    margin-top: 0;
+}
+
+.tool-metrics {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 12px;
+    color: #bdbdbd;
+}
+
+@media (max-width: 700px) {
+    .cards {
+        flex-direction: column;
+    }
+
+    .tool-metrics {
+        grid-template-columns: 1fr;
+    }
+}

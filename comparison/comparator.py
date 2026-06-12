@@ -1,13 +1,36 @@
 from datetime import datetime, UTC
 
 
-def compare_data(sentinel_alerts, jira_tickets):
+def compare_data(
+    sentinel_alerts,
+    jira_tickets,
+    managed_clients=None
+):
 
     clients = {}
 
+    for client, sources in (
+        managed_clients or {}
+    ).items():
+
+        client = client.strip()
+
+        if not client:
+            continue
+
+        clients[client] = {
+            "client": client,
+            "sources": set(sources),
+            "sentinel_alerts": [],
+            "jira_tickets": []
+        }
+
     for alert in sentinel_alerts:
 
-        client = alert.get("client", "Unknown")
+        client = alert.get(
+            "client",
+            "Unknown"
+        ).strip()
 
         if client not in clients:
             clients[client] = {
@@ -21,11 +44,17 @@ def compare_data(sentinel_alerts, jira_tickets):
             alert.get("source", "unknown")
         )
 
-        clients[client]["sentinel_alerts"].append(alert)
+        clients[client]["sentinel_alerts"].append({
+            **alert,
+            "client": client
+        })
 
     for ticket in jira_tickets:
 
-        client = ticket.get("client", "Unknown")
+        client = ticket.get(
+            "client",
+            "Unknown"
+        ).strip()
 
         if client not in clients:
             clients[client] = {
@@ -35,7 +64,10 @@ def compare_data(sentinel_alerts, jira_tickets):
                 "jira_tickets": []
             }
 
-        clients[client]["jira_tickets"].append(ticket)
+        clients[client]["jira_tickets"].append({
+            **ticket,
+            "client": client
+        })
 
     result = []
 

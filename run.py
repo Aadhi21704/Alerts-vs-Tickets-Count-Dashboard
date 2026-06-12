@@ -6,7 +6,10 @@ from dotenv import load_dotenv
 
 from logger import logger
 
-from config import SENTINELONE_SOURCES
+from config import (
+    MANAGED_CLIENTS,
+    SENTINELONE_SOURCES
+)
 
 from collectors.sentinelone import (
     fetch_sentinelone_alerts
@@ -109,8 +112,34 @@ def main():
 
         result = compare_data(
             sentinel_alerts,
-            jira_tickets
+            jira_tickets,
+            managed_clients=MANAGED_CLIENTS.get(
+                "sentinelone",
+                {}
+            )
         )
+
+        timestamp = result[
+            "timestamp"
+        ]
+
+        tool_result = {
+            key: value
+            for key, value
+            in result.items()
+            if key != "timestamp"
+        }
+
+        dashboard_data = {
+            "timestamp": timestamp,
+            "tools": [
+                {
+                    "tool": "SentinelOne",
+                    "tool_key": "sentinelone",
+                    **tool_result
+                }
+            ]
+        }
 
         with open(
             "latest.json",
@@ -119,7 +148,7 @@ def main():
         ) as f:
 
             json.dump(
-                [result],
+                dashboard_data,
                 f,
                 indent=2
             )

@@ -1,0 +1,81 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>{{ client.client }} Dashboard</title>
+    <link rel="stylesheet" href="/static/style.css">
+</head>
+<body>
+<div class="container">
+    {% set alerts = client.get(
+        "alerts",
+        client.get("sentinel_alerts", [])
+    ) %}
+    {% set tickets = client.get(
+        "tickets",
+        client.get("jira_tickets", [])
+    ) %}
+
+    <div class="header-card">
+        <h1>{{ client.client }}</h1>
+        <p>{{ tool.tool }}</p>
+        <a
+            class="jira-link"
+            href="{{ request.url_for(
+                'tool_dashboard',
+                tool_name=tool.tool_key
+            ) }}"
+        >
+            Back to {{ tool.tool }}
+        </a>
+    </div>
+
+    <div class="cards">
+        <div class="card">
+            <h2>Alerts</h2>
+            <span class="count">
+                {{ client.alert_count }}
+            </span>
+        </div>
+
+        <div class="card">
+            <h2>Tickets</h2>
+            <span class="count">
+                {{ client.ticket_count }}
+            </span>
+        </div>
+    </div>
+
+    <div class="client-card">
+        <div class="client-details" style="display: block;">
+            <h2>Alert IDs</h2>
+
+            <ul>
+                {% for alert in alerts %}
+                <li>{{ alert.id }}</li>
+                {% else %}
+                <li>No alert IDs available.</li>
+                {% endfor %}
+            </ul>
+
+            <h2>Jira Ticket IDs</h2>
+
+            <ul>
+                {% for ticket in tickets %}
+                <li>
+                    <a
+                        class="jira-link"
+                        href="https://nopalcyber.atlassian.net/browse/{{ ticket.key }}"
+                        target="_blank"
+                    >
+                        {{ ticket.key }}
+                    </a>
+                </li>
+                {% else %}
+                <li>No Jira ticket IDs available.</li>
+                {% endfor %}
+            </ul>
+        </div>
+    </div>
+</div>
+</body>
+</html>

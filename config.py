@@ -16,6 +16,27 @@ RESSELLER_EXCLUDED_CLIENTS = [
     "Greenko-Energy-EDR"
 ]
 
+MANAGED_CLIENTS = {
+    "sentinelone": {
+        "QuisLex": ["mssp"],
+        "CapLaw": ["mssp"],
+        "LegalOps": ["mssp"],
+        "LCRA": ["mssp"],
+        "Consint.ai": ["mssp"],
+        "NopalCyber": ["mssp"],
+        "Heritage Foods": ["reseller"],
+        "AM Green Ammonia Pvt Ltd": ["reseller"],
+        "HEALTHNET GLOBAL LIMITED": ["reseller"],
+        "STAR HOSPITALS": ["reseller"],
+        "Sudhakar PVC products pvt ltd": ["reseller"],
+        "Greenko Energy Projects Private Limited": ["reseller"],
+        "Health Axis Private Ltd": ["reseller"],
+        "Progility Technologies Pvt. Ltd.": ["reseller"],
+        "Mythri Hospital": ["reseller"],
+        "Revalsys Technologies PVT LTD": ["reseller"]
+    }
+}
+
 SENTINELONE_SOURCES = [
     {
         "name": "mssp",
