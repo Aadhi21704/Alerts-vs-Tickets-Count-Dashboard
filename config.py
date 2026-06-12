@@ -67,16 +67,18 @@ WAZUH_HOURS = 24
 
 WAZUH_LIMIT = 500
 
+WAZUH_VERIFY_SSL = False
+
 WAZUH_ALLOWED_CLIENTS = [
     "Progility",
     "NCC",
-    "Rainbow_Children_Hospitals"
+    "Rainbow Hospitals"
 ]
 
 WAZUH_CLIENT_MAPPING = {
     "Progility": "Progility",
     "NCC": "NCC-Bihar",
-    "Rainbow_Children_Hospitals":
+    "Rainbow Hospitals":
         "Rainbow_Children_Hospitals"
 }
 

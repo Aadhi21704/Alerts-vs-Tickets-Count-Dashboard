@@ -6,7 +6,8 @@ from config import (
     WAZUH_HOURS,
     WAZUH_LIMIT,
     WAZUH_MIN_RULE_LEVEL,
-    WAZUH_URL
+    WAZUH_URL,
+    WAZUH_VERIFY_SSL
 )
 
 
@@ -37,7 +38,8 @@ def fetch_wazuh_alerts(api_key):
         WAZUH_URL,
         headers=headers,
         params=params,
-        timeout=60
+        timeout=60,
+        verify=WAZUH_VERIFY_SSL
     )
 
     response.raise_for_status()
