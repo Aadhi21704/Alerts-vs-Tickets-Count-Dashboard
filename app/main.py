@@ -1,6 +1,8 @@
 from pathlib import Path
+from datetime import datetime
 import json
 import scheduler
+from zoneinfo import ZoneInfo
 from fastapi import FastAPI
 from fastapi import HTTPException
 from fastapi import Request
@@ -22,6 +24,31 @@ def load_dashboard_data():
 
     with open(DATA_FILE, "r") as f:
         return json.load(f)
+
+
+def format_dashboard_timestamp(timestamp):
+
+    if not isinstance(timestamp, str):
+        return "Unknown"
+
+    try:
+
+        parsed_timestamp = datetime.fromisoformat(
+            timestamp
+        )
+
+        local_timestamp = (
+            parsed_timestamp.astimezone(
+                ZoneInfo("Asia/Kolkata")
+            )
+        )
+
+        return local_timestamp.strftime(
+            "%d %b %Y, %I:%M %p IST"
+        )
+
+    except ValueError:
+        return timestamp
 
 
 def find_tool(data, tool_name):
@@ -157,7 +184,9 @@ def dashboard(request: Request):
         "dashboard.html",
         {
             "request": request,
-            "timestamp": data.get("timestamp"),
+            "timestamp": format_dashboard_timestamp(
+                data.get("timestamp")
+            ),
             "dashboard": dashboard_context,
             "tools": tools
         }
