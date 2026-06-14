@@ -285,10 +285,11 @@ Future
 
 Current active development focus:
 
-1. Wazuh Collector
-2. Wazuh Jira Integration
-3. Wazuh Comparator
-4. Wazuh Dashboard Integration
+1. Wazuh Collector ✅
+2. Wazuh Jira Integration ✅
+3. Wazuh Comparator ✅
+4. Wazuh Dashboard Integration ✅
+5. Timestamp display polish ✅
 
 Do not redesign the dashboard unless explicitly requested.
 
