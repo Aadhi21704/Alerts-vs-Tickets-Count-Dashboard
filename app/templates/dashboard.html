@@ -1,88 +1,287 @@
 <!DOCTYPE html>
 <html>
 <head>
-    <title>Security Alert Validation Dashboard</title>
+    <title>Security Operations Status Dashboard</title>
     <link rel="stylesheet" href="/static/style.css">
 </head>
-<body>
-<div class="container">
-    <div class="header-card">
-        <h1>Security Alert Validation Dashboard</h1>
-        <p>Tool vs Jira monitoring</p>
-        <p class="last-updated">
-            Last Updated: {{ timestamp }}
-        </p>
-    </div>
-
-    <div class="cards">
-        <div class="card">
-            <h2>Tools</h2>
-            <span class="count">
-                {{ dashboard.tool_count }}
-            </span>
-        </div>
-
-        <div class="card">
-            <h2>Alerts</h2>
-            <span class="count">
-                {{ dashboard.alert_count }}
-            </span>
-        </div>
-
-        <div class="card">
-            <h2>Tickets</h2>
-            <span class="count">
-                {{ dashboard.ticket_count }}
-            </span>
-        </div>
-
-        <div class="card">
-            <h2>Mismatches</h2>
-            <span class="count">
-                {{ dashboard.mismatch_count }}
-            </span>
-        </div>
-    </div>
-
-    <h2>Integrated Tools</h2>
-
-    <div class="tool-grid">
-        {% for tool in tools %}
-        <a
-            class="tool-card
-                {% if tool.status == 'Equal' %}
-                    equal-card
+<body class="dashboard-page">
+<main class="container dashboard-shell">
+    <section class="status-hero
+        {% if dashboard.status == 'Equal' %}
+            status-hero--clear
+        {% else %}
+            status-hero--attention
+        {% endif %}
+    ">
+        <div class="status-hero__headline">
+            <div>
+                <p class="dashboard-eyebrow">
+                    Security Operations Status
+                </p>
+                <h1>
+                    {% if dashboard.status == "Equal" %}
+                        ALL CLEAR
+                    {% else %}
+                        ACTION REQUIRED
+                    {% endif %}
+                </h1>
+                <p class="status-hero__summary">
+                    {% if dashboard.status == "Equal" %}
+                        Alert and Jira ticket counts are
+                        reconciled across all monitored tools.
+                    {% else %}
+                        {{ dashboard.mismatch_count }} client
+                        reconciliation issue{% if dashboard.mismatch_count != 1 %}s{% endif %}
+                        require review.
+                    {% endif %}
+                </p>
+            </div>
+            <span class="status-badge
+                {% if dashboard.status == 'Equal' %}
+                    status-badge--equal
                 {% else %}
-                    mismatch-card
+                    status-badge--mismatch
                 {% endif %}
-            "
-            href="{{ request.url_for(
-                'tool_dashboard',
-                tool_name=tool.tool_key
-            ) }}"
-        >
-            <div class="tool-card-header">
-                <h2>{{ tool.tool }}</h2>
-                <span>{{ tool.status }}</span>
+            ">
+                {{ dashboard.status }}
+            </span>
+        </div>
+
+        <div class="status-hero__details">
+            <div class="hero-detail">
+                <span>Mismatches</span>
+                <strong>
+                    {{ dashboard.mismatch_count }}
+                </strong>
             </div>
 
-            <div class="tool-metrics">
-                <span>Alerts: {{ tool.alert_count }}</span>
-                <span>Tickets: {{ tool.ticket_count }}</span>
-                <span>Clients: {{ tool.client_count }}</span>
+            {% if dashboard.status == "Mismatch" %}
+            <div class="hero-detail">
+                <span>Affected Tools</span>
+                <strong>
+                    {{ dashboard.affected_tools | join(", ") }}
+                </strong>
+            </div>
+            <div class="hero-detail hero-detail--wide">
+                <span>Affected Clients</span>
+                <strong>
+                    {{ dashboard.affected_clients | join(", ") }}
+                </strong>
+            </div>
+            {% endif %}
+
+            <div class="hero-detail hero-detail--timestamp">
+                <span>Last Updated</span>
+                <strong>{{ timestamp }}</strong>
+            </div>
+        </div>
+    </section>
+
+    <section
+        class="summary-grid"
+        aria-label="Alert and ticket totals"
+    >
+        <article class="summary-card">
+            <span>Total Alerts</span>
+            <strong>{{ dashboard.alert_count }}</strong>
+        </article>
+        <article class="summary-card">
+            <span>Total Tickets</span>
+            <strong>{{ dashboard.ticket_count }}</strong>
+        </article>
+        <article class="summary-card
+            {% if dashboard.total_delta == 0 %}
+                summary-card--equal
+            {% else %}
+                summary-card--mismatch
+            {% endif %}
+        ">
+            <span>Total Delta</span>
+            <strong>
+                {{ dashboard.total_delta_display }}
+            </strong>
+        </article>
+    </section>
+
+    <section class="priority-card
+        {% if dashboard.priority_issue %}
+            priority-card--attention
+        {% else %}
+            priority-card--clear
+        {% endif %}
+    ">
+        <div class="section-heading">
+            <div>
+                <p class="dashboard-eyebrow">
+                    Priority Attention
+                </p>
+                {% if dashboard.priority_issue %}
+                <h2>
+                    {{ dashboard.priority_issue.tool }}
+                    <span aria-hidden="true">→</span>
+                    {{ dashboard.priority_issue.client }}
+                </h2>
+                {% else %}
+                <h2>No reconciliation gaps detected</h2>
+                {% endif %}
+            </div>
+            <span class="status-badge
+                {% if dashboard.priority_issue %}
+                    status-badge--mismatch
+                {% else %}
+                    status-badge--equal
+                {% endif %}
+            ">
+                {% if dashboard.priority_issue %}
+                    Action Required
+                {% else %}
+                    All Clear
+                {% endif %}
+            </span>
+        </div>
+
+        {% if dashboard.priority_issue %}
+        <div class="priority-card__content">
+            <div class="priority-metrics">
                 <span>
-                    Mismatches: {{ tool.mismatch_count }}
+                    Alerts
+                    <strong>
+                        {{ dashboard.priority_issue.alert_count }}
+                    </strong>
+                </span>
+                <span>
+                    Tickets
+                    <strong>
+                        {{ dashboard.priority_issue.ticket_count }}
+                    </strong>
+                </span>
+                <span>
+                    Delta
+                    <strong>
+                        {{ dashboard.priority_issue.delta_display }}
+                    </strong>
                 </span>
             </div>
-        </a>
-        {% else %}
-        <div class="card">
-            <p>No tool data is currently available.</p>
+            <a
+                class="action-button"
+                href="{{ request.url_for(
+                    'client_dashboard',
+                    tool_name=dashboard.priority_issue.tool_key,
+                    client_name=dashboard.priority_issue.client
+                ) }}"
+            >
+                Investigate
+            </a>
         </div>
-        {% endfor %}
-    </div>
-</div>
+        {% else %}
+        <p class="priority-card__message">
+            No client requires immediate investigation.
+        </p>
+        {% endif %}
+    </section>
 
-<script src="/static/app.js"></script>
+    <section class="tool-health-section">
+        <div class="section-heading">
+            <div>
+                <p class="dashboard-eyebrow">
+                    Integrated Monitoring
+                </p>
+                <h2>Tool Health</h2>
+            </div>
+        </div>
+
+        <div class="tool-health-grid">
+            {% for tool in tools %}
+            <article class="tool-health-card
+                {% if tool.status == 'Equal' %}
+                    tool-health-card--equal
+                {% else %}
+                    tool-health-card--mismatch
+                {% endif %}
+            ">
+                <div class="tool-health-card__header">
+                    <h3>{{ tool.tool }}</h3>
+                    <span class="status-badge
+                        {% if tool.status == 'Equal' %}
+                            status-badge--equal
+                        {% else %}
+                            status-badge--mismatch
+                        {% endif %}
+                    ">
+                        {{ tool.status }}
+                    </span>
+                </div>
+
+                <div class="tool-health-metrics">
+                    <div>
+                        <span>Alerts</span>
+                        <strong>{{ tool.alert_count }}</strong>
+                    </div>
+                    <div>
+                        <span>Tickets</span>
+                        <strong>{{ tool.ticket_count }}</strong>
+                    </div>
+                    <div>
+                        <span>Delta</span>
+                        <strong>{{ tool.delta_display }}</strong>
+                    </div>
+                    <div>
+                        <span>Mismatches</span>
+                        <strong>{{ tool.mismatch_count }}</strong>
+                    </div>
+                </div>
+
+                <div
+                    class="comparison-bars"
+                    aria-label="{{ tool.tool }} alert and ticket comparison"
+                >
+                    <label>
+                        <span>Alerts</span>
+                        <progress
+                            class="metric-bar metric-bar--alerts"
+                            max="100"
+                            value="{{ tool.alert_bar_percentage }}"
+                        >
+                            {{ tool.alert_bar_percentage }}%
+                        </progress>
+                    </label>
+                    <label>
+                        <span>Tickets</span>
+                        <progress
+                            class="metric-bar metric-bar--tickets"
+                            max="100"
+                            value="{{ tool.ticket_bar_percentage }}"
+                        >
+                            {{ tool.ticket_bar_percentage }}%
+                        </progress>
+                    </label>
+                </div>
+
+                <a
+                    class="action-button action-button--secondary"
+                    href="{{ request.url_for(
+                        'tool_dashboard',
+                        tool_name=tool.tool_key
+                    ) }}"
+                >
+                    Open Tool
+                </a>
+            </article>
+            {% else %}
+            <p class="empty-state">
+                No tool data is currently available.
+            </p>
+            {% endfor %}
+        </div>
+    </section>
+
+    {% if dashboard.has_wazuh %}
+    <aside class="data-quality-strip">
+        <strong>Data limitation:</strong>
+        Wazuh alert IDs are not available from the WHB API yet.
+        Jira ticket drilldown is available.
+    </aside>
+    {% endif %}
+</main>
 </body>
 </html>

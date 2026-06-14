@@ -147,28 +147,128 @@ def build_tool_context(tool):
     }
 
 
+def build_homepage_tool_context(tool):
+
+    alert_count = tool["alert_count"]
+    ticket_count = tool["ticket_count"]
+    bar_maximum = max(
+        alert_count,
+        ticket_count,
+        1
+    )
+    delta = alert_count - ticket_count
+
+    return {
+        **tool,
+        "delta": delta,
+        "delta_display": f"{delta:+d}",
+        "alert_bar_percentage": round(
+            (alert_count / bar_maximum) * 100
+        ),
+        "ticket_bar_percentage": round(
+            (ticket_count / bar_maximum) * 100
+        )
+    }
+
+
 @app.get("/")
 def dashboard(request: Request):
 
     data = load_dashboard_data()
 
     tools = [
-        build_tool_context(tool)
+        build_homepage_tool_context(
+            build_tool_context(tool)
+        )
         for tool in data.get("tools", [])
     ]
 
+    total_alerts = sum(
+        tool["alert_count"]
+        for tool in tools
+    )
+    total_tickets = sum(
+        tool["ticket_count"]
+        for tool in tools
+    )
+    mismatch_count = sum(
+        tool["mismatch_count"]
+        for tool in tools
+    )
+    total_delta = total_alerts - total_tickets
+
+    mismatch_issues = []
+    affected_tools = []
+    affected_clients = []
+
+    for tool in tools:
+
+        tool_has_mismatch = False
+
+        for client in tool["clients"]:
+
+            if client.get("status") == "Equal":
+                continue
+
+            tool_has_mismatch = True
+            client_name = client.get(
+                "client",
+                ""
+            )
+            client_delta = (
+                client["alert_count"]
+                - client["ticket_count"]
+            )
+
+            mismatch_issues.append(
+                {
+                    "tool": tool["tool"],
+                    "tool_key": tool["tool_key"],
+                    "client": client_name,
+                    "alert_count":
+                        client["alert_count"],
+                    "ticket_count":
+                        client["ticket_count"],
+                    "delta": client_delta,
+                    "delta_display":
+                        f"{client_delta:+d}"
+                }
+            )
+
+            if client_name not in affected_clients:
+                affected_clients.append(
+                    client_name
+                )
+
+        if tool_has_mismatch:
+            affected_tools.append(
+                tool["tool"]
+            )
+
+    mismatch_issues.sort(
+        key=lambda issue: (
+            -abs(issue["delta"]),
+            issue["tool"].casefold(),
+            issue["client"].casefold()
+        )
+    )
+
     dashboard_context = {
-        "tool_count": len(tools),
-        "alert_count": sum(
-            tool["alert_count"]
-            for tool in tools
+        "alert_count": total_alerts,
+        "ticket_count": total_tickets,
+        "total_delta": total_delta,
+        "total_delta_display":
+            f"{total_delta:+d}",
+        "mismatch_count": mismatch_count,
+        "affected_tools": affected_tools,
+        "affected_clients": affected_clients,
+        "priority_issue": (
+            mismatch_issues[0]
+            if mismatch_issues
+            else None
         ),
-        "ticket_count": sum(
-            tool["ticket_count"]
-            for tool in tools
-        ),
-        "mismatch_count": sum(
-            tool["mismatch_count"]
+        "has_wazuh": any(
+            tool["tool_key"] == "wazuh"
             for tool in tools
         )
     }
