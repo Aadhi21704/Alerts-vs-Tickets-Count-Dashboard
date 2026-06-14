@@ -15,11 +15,17 @@ from collectors.sentinelone import (
     fetch_sentinelone_alerts
 )
 
+from collectors.wazuh import (
+    fetch_wazuh_alerts
+)
+
 from collectors.jira import (
-    fetch_jira_tickets
+    fetch_jira_tickets,
+    fetch_wazuh_jira_tickets
 )
 
 from comparison.comparator import (
+    compare_count_data,
     compare_data
 )
 
@@ -110,7 +116,7 @@ def main():
             f"{len(jira_tickets)} tickets retrieved"
         )
 
-        result = compare_data(
+        sentinelone_result = compare_data(
             sentinel_alerts,
             jira_tickets,
             managed_clients=MANAGED_CLIENTS.get(
@@ -119,16 +125,58 @@ def main():
             )
         )
 
-        timestamp = result[
+        timestamp = sentinelone_result[
             "timestamp"
         ]
 
-        tool_result = {
+        sentinelone_tool_result = {
             key: value
             for key, value
-            in result.items()
+            in sentinelone_result.items()
             if key != "timestamp"
         }
+
+        whb_api_key = os.getenv(
+            "WHB_API_KEY"
+        )
+
+        if not whb_api_key:
+            raise ValueError(
+                "WHB_API_KEY not set"
+            )
+
+        wazuh_alert_counts = (
+            fetch_wazuh_alerts(
+                whb_api_key
+            )
+        )
+
+        logger.info(
+            f"Wazuh: "
+            f"{sum(
+                record['count']
+                for record in wazuh_alert_counts
+            )} alerts retrieved"
+        )
+
+        wazuh_jira_tickets = (
+            fetch_wazuh_jira_tickets(
+                jira_email,
+                jira_token
+            )
+        )
+
+        logger.info(
+            f"Wazuh Jira: "
+            f"{len(wazuh_jira_tickets)} "
+            f"tickets retrieved"
+        )
+
+        wazuh_result = compare_count_data(
+            wazuh_alert_counts,
+            wazuh_jira_tickets,
+            source="wazuh"
+        )
 
         dashboard_data = {
             "timestamp": timestamp,
@@ -136,7 +184,12 @@ def main():
                 {
                     "tool": "SentinelOne",
                     "tool_key": "sentinelone",
-                    **tool_result
+                    **sentinelone_tool_result
+                },
+                {
+                    "tool": "Wazuh",
+                    "tool_key": "wazuh",
+                    **wazuh_result
                 }
             ]
         }

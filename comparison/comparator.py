@@ -110,3 +110,117 @@ def compare_data(
         "clients":
             result
     }
+
+
+def compare_count_data(
+    alert_counts,
+    jira_tickets,
+    source
+):
+
+    clients = {}
+
+    for record in alert_counts:
+
+        client = record.get(
+            "client",
+            "Unknown"
+        ).strip()
+
+        if client not in clients:
+            clients[client] = {
+                "client": client,
+                "sources": set(),
+                "alert_count": 0,
+                "alerts": [],
+                "tickets": []
+            }
+
+        clients[client]["sources"].add(
+            record.get(
+                "source",
+                source
+            )
+        )
+
+        clients[client]["alert_count"] += (
+            record["count"]
+        )
+
+        clients[client]["alerts"].extend(
+            record.get(
+                "alerts",
+                []
+            )
+        )
+
+    for ticket in jira_tickets:
+
+        client = ticket.get(
+            "client",
+            "Unknown"
+        ).strip()
+
+        if client not in clients:
+            clients[client] = {
+                "client": client,
+                "sources": {source},
+                "alert_count": 0,
+                "alerts": [],
+                "tickets": []
+            }
+
+        clients[client]["tickets"].append({
+            **ticket,
+            "client": client
+        })
+
+    result = []
+
+    for client in clients.values():
+
+        ticket_count = len(
+            client["tickets"]
+        )
+
+        result.append({
+            "client": client["client"],
+            "sources": sorted(
+                list(client["sources"])
+            ),
+            "alert_count":
+                client["alert_count"],
+            "ticket_count":
+                ticket_count,
+            "status":
+                "Equal"
+                if client["alert_count"]
+                == ticket_count
+                else
+                "Mismatch",
+            "alerts":
+                client["alerts"],
+            "tickets":
+                client["tickets"]
+        })
+
+    result.sort(
+        key=lambda client: (
+            client["status"] == "Equal",
+            client["client"].casefold()
+        )
+    )
+
+    return {
+        "total_alerts":
+            sum(
+                record["count"]
+                for record in alert_counts
+            ),
+
+        "total_tickets":
+            len(jira_tickets),
+
+        "clients":
+            result
+    }
