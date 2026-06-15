@@ -40,6 +40,7 @@ The following items are considered completed and should not be reimplemented:
 * SentinelOne dashboard integration
 * SentinelOne Jira integration
 * SentinelOne comparator integration
+* SentinelOne client normalization v1
 * Alert ID drilldowns
 * Jira Ticket ID drilldowns
 * Wazuh collector, Jira, comparator, and dashboard integration
@@ -322,6 +323,37 @@ rather than guessed.
 
 ---
 
+## Client Normalization
+
+SentinelOne aliases are configured in:
+
+`SENTINELONE_CLIENT_MAPPING`
+
+Normalization must use exact dictionary mapping only.
+
+Do not use:
+
+* Fuzzy matching
+* Substring matching
+* Automatic case-insensitive matching
+
+Normalization happens before SentinelOne alerts and Jira tickets are grouped,
+so both inputs resolve to the same canonical client name.
+
+Collectors must preserve raw source client names. Do not duplicate
+SentinelOne alias mapping logic in the SentinelOne or Jira collectors.
+
+Aliases requiring confirmation must remain unmapped:
+
+* `STAR_NRG`
+* `STAR_Banjara`
+* `Greenko-Energy-MDR`
+
+`Greenko-Energy-EDR` remains excluded and must not be normalized into a
+managed client.
+
+---
+
 # Wazuh Rules
 
 Current source:
@@ -467,5 +499,5 @@ Current priority order:
 
 1. Preserve the stable `dashboard-ui-v1.1` behavior
 2. Plan future React migration against `/api/dashboard`
-3. Improve client normalization
+3. Confirm remaining SentinelOne aliases
 4. Define an auto-refresh strategy

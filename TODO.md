@@ -27,6 +27,11 @@
 * [x] UI Phase 1 polished homepage
 * [x] UI Phase 2 polished tool and client pages
 * [x] Client evidence display ordering
+* [x] SentinelOne client normalization v1
+* [x] Exact mapping for `AM Green`
+* [x] Exact mapping for `HNG`
+* [x] Exact mapping for `Sudhakar_PVC`
+* [x] Exact mapping for `Progility`
 
 ### Application Cleanup
 
@@ -174,34 +179,24 @@ Planned
 
 ### Client Normalization Framework
 
-Current issue:
+Completed v1:
 
-Observed client names may differ from managed client names.
+* Exact dictionary mapping through `SENTINELONE_CLIENT_MAPPING`
+* SentinelOne and Jira names normalized before comparison grouping
+* Raw collector client names preserved
+* Alert and ticket totals preserved
 
-Example:
+Pending human confirmation:
 
-AM Green
+* `STAR_NRG`
+* `STAR_Banjara`
+* `Greenko-Energy-MDR`
 
-vs
-
-AM Green Ammonia Pvt Ltd
-
-Future structure:
-
-CLIENT_MAPPINGS = {
-"sentinelone": {},
-"wazuh": {}
-}
-
-Purpose:
-
-* Prevent duplicate client identities
-* Provide canonical client naming
-* Improve dashboard consistency
+Do not map these names until their canonical ownership is confirmed.
 
 Status:
 
-Planned
+V1 completed; additional aliases pending confirmation
 
 ---
 
@@ -357,7 +352,7 @@ Current active development focus:
 1. Stable dashboard release `dashboard-ui-v1.1`
 2. React migration planning
 3. Auto-refresh strategy
-4. Client normalization improvements
+4. Confirm remaining SentinelOne aliases
 5. Optional charts and polish
 
 Do not replace the stable dashboard unless explicitly requested.

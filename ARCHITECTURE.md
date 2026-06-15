@@ -160,10 +160,33 @@ Implemented:
 * MSSP allowlist filtering
 * Reseller exclusions
 * Managed client registry
+* Exact client alias normalization
 * Source tagging
 * Jira comparison
 * Dashboard integration
 * Client drilldowns
+
+### SentinelOne Client Normalization
+
+`SENTINELONE_CLIENT_MAPPING` in `config.py` maps approved raw aliases to
+managed canonical client names.
+
+Current mappings:
+
+* `AM Green` to `AM Green Ammonia Pvt Ltd`
+* `HNG` to `HEALTHNET GLOBAL LIMITED`
+* `Sudhakar_PVC` to `Sudhakar PVC products pvt ltd`
+* `Progility` to `Progility Technologies Pvt. Ltd.`
+
+Normalization occurs in the SentinelOne comparison flow before alerts and
+Jira tickets are grouped. Both sides therefore use the same canonical client
+identity.
+
+Mapping is exact dictionary lookup only. Fuzzy matching, substring matching,
+and automatic case-insensitive matching are not allowed.
+
+SentinelOne and Jira collectors preserve the raw client names returned by
+their sources. Normalization logic must not be duplicated across collectors.
 
 Current exclusion:
 
@@ -315,7 +338,8 @@ Responsible for:
 
 * Fetching data
 * Filtering data
-* Normalizing data
+* Normalizing source record shape
+* Preserving raw client names for comparison-time canonicalization
 
 Collectors must not contain:
 
@@ -370,7 +394,8 @@ Avoid duplicating configuration elsewhere.
 
 Future milestones:
 
-* Client normalization framework
+* Confirm remaining SentinelOne client aliases
+* Expand client normalization only through approved exact mappings
 * React migration planning using `/api/dashboard`
 * Auto-refresh strategy
 * Optional dashboard visualizations

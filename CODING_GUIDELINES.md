@@ -209,12 +209,29 @@ Do not hardcode configuration values elsewhere.
 
 Client names should be treated as canonical identifiers.
 
-When normalization is required:
+For SentinelOne, approved aliases are configured in:
 
-* Normalize at the collection/comparison layer
-* Do not normalize inside templates
+`SENTINELONE_CLIENT_MAPPING`
 
-Future client mapping logic should remain centralized.
+Apply this mapping in the comparison flow before SentinelOne and Jira records
+are grouped. This ensures both sides resolve to the same canonical client
+identity.
+
+Client normalization must use exact dictionary lookup only.
+
+Do not use:
+
+* Fuzzy matching
+* Substring matching
+* Automatic case-insensitive matching
+
+Collectors should preserve raw client names from their source systems. Do not
+duplicate alias normalization in the SentinelOne and Jira collectors.
+
+Do not normalize client names inside templates or mutate source input records
+in place. Output records may contain the derived canonical client name.
+
+Unknown aliases must remain unchanged until a mapping is explicitly confirmed.
 
 ---
 

@@ -35,7 +35,7 @@ Contains:
 * Tool settings
 * Allowlists
 * Exclusions
-* Client mappings
+* Exact client mappings, including `SENTINELONE_CLIENT_MAPPING`
 * Managed client registries
 * Jira configuration
 
@@ -151,7 +151,8 @@ Responsibilities:
 
 * Fetch alerts
 * Apply filtering
-* Normalize records
+* Normalize record shape
+* Preserve raw SentinelOne client names
 
 ---
 
@@ -211,6 +212,13 @@ Current responsibilities:
 * Ticket counts
 * Client status
 * Source aggregation
+* Exact SentinelOne alias normalization before grouping
+
+`compare_data()` accepts the configured SentinelOne client mapping. It applies
+the same exact mapping to alert and Jira records before grouping them under a
+canonical client name.
+
+Collectors do not own or duplicate this alias mapping.
 
 Future goal:
 
