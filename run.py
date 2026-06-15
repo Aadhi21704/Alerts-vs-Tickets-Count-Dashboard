@@ -8,6 +8,7 @@ from logger import logger
 
 from config import (
     MANAGED_CLIENTS,
+    SENTINELONE_CLIENT_MAPPING,
     SENTINELONE_SOURCES
 )
 
@@ -122,7 +123,9 @@ def main():
             managed_clients=MANAGED_CLIENTS.get(
                 "sentinelone",
                 {}
-            )
+            ),
+            client_mapping=
+                SENTINELONE_CLIENT_MAPPING
         )
 
         timestamp = sentinelone_result[

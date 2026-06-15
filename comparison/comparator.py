@@ -4,10 +4,12 @@ from datetime import datetime, UTC
 def compare_data(
     sentinel_alerts,
     jira_tickets,
-    managed_clients=None
+    managed_clients=None,
+    client_mapping=None
 ):
 
     clients = {}
+    client_mapping = client_mapping or {}
 
     for client, sources in (
         managed_clients or {}
@@ -27,10 +29,14 @@ def compare_data(
 
     for alert in sentinel_alerts:
 
-        client = alert.get(
+        raw_client = alert.get(
             "client",
             "Unknown"
         ).strip()
+        client = client_mapping.get(
+            raw_client,
+            raw_client
+        )
 
         if client not in clients:
             clients[client] = {
@@ -51,10 +57,14 @@ def compare_data(
 
     for ticket in jira_tickets:
 
-        client = ticket.get(
+        raw_client = ticket.get(
             "client",
             "Unknown"
         ).strip()
+        client = client_mapping.get(
+            raw_client,
+            raw_client
+        )
 
         if client not in clients:
             clients[client] = {

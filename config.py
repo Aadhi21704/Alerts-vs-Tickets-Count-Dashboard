@@ -37,6 +37,17 @@ MANAGED_CLIENTS = {
     }
 }
 
+SENTINELONE_CLIENT_MAPPING = {
+    "AM Green":
+        "AM Green Ammonia Pvt Ltd",
+    "HNG":
+        "HEALTHNET GLOBAL LIMITED",
+    "Sudhakar_PVC":
+        "Sudhakar PVC products pvt ltd",
+    "Progility":
+        "Progility Technologies Pvt. Ltd."
+}
+
 SENTINELONE_SOURCES = [
     {
         "name": "mssp",
