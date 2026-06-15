@@ -32,6 +32,11 @@
 * [x] Exact mapping for `HNG`
 * [x] Exact mapping for `Sudhakar_PVC`
 * [x] Exact mapping for `Progility`
+* [x] Reseller site normalization
+* [x] Map `STAR_NRG` to `STAR HOSPITALS`
+* [x] Map `STAR_Banjara` to `STAR HOSPITALS`
+* [x] Map `Greenko-Energy-MDR` to `Greenko Energy Projects Private Limited`
+* [x] Preserve `Greenko-Energy-EDR` exclusion
 
 ### Application Cleanup
 
@@ -159,6 +164,8 @@ Requirements:
 * Preserve current routes during migration
 * Do not use deprecated `/api/data`
 * Keep the canonical `tools[]` schema
+* Begin only after Securonix is integrated and the API model is stable across
+  SentinelOne, Wazuh, and Securonix
 
 Status:
 
@@ -186,17 +193,17 @@ Completed v1:
 * Raw collector client names preserved
 * Alert and ticket totals preserved
 
-Pending human confirmation:
+Confirmed reseller site aliases:
 
-* `STAR_NRG`
-* `STAR_Banjara`
-* `Greenko-Energy-MDR`
+* `STAR_NRG` and `STAR_Banjara` belong to `STAR HOSPITALS`
+* `Greenko-Energy-MDR` belongs to `Greenko Energy Projects Private Limited`
 
-Do not map these names until their canonical ownership is confirmed.
+Unknown future aliases still require manual confirmation. Do not introduce
+fuzzy, substring, or automatic case-insensitive mappings.
 
 Status:
 
-V1 completed; additional aliases pending confirmation
+V1 and confirmed reseller site normalization completed
 
 ---
 
@@ -350,9 +357,9 @@ Completed development milestones:
 Current active development focus:
 
 1. Stable dashboard release `dashboard-ui-v1.1`
-2. React migration planning
-3. Auto-refresh strategy
-4. Confirm remaining SentinelOne aliases
+2. Securonix integration
+3. Stabilize the canonical API and data model across all integrated tools
+4. React migration planning
 5. Optional charts and polish
 
 Do not replace the stable dashboard unless explicitly requested.

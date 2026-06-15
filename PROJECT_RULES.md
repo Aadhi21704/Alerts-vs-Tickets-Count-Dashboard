@@ -343,14 +343,17 @@ so both inputs resolve to the same canonical client name.
 Collectors must preserve raw source client names. Do not duplicate
 SentinelOne alias mapping logic in the SentinelOne or Jira collectors.
 
-Aliases requiring confirmation must remain unmapped:
+Confirmed reseller site mappings:
 
-* `STAR_NRG`
-* `STAR_Banjara`
-* `Greenko-Energy-MDR`
+* `STAR_NRG` to `STAR HOSPITALS`
+* `STAR_Banjara` to `STAR HOSPITALS`
+* `Greenko-Energy-MDR` to `Greenko Energy Projects Private Limited`
 
 `Greenko-Energy-EDR` remains excluded and must not be normalized into a
 managed client.
+
+Unknown future aliases must remain unchanged until their canonical ownership
+is manually confirmed and an exact mapping is approved.
 
 ---
 
@@ -457,6 +460,10 @@ They should not require:
 * Route redesign
 * Template duplication
 
+Securonix integration should be completed before React migration. This allows
+the canonical API and data model to stabilize across SentinelOne, Wazuh, and
+Securonix first.
+
 ---
 
 # Future Dashboard Features
@@ -498,6 +505,6 @@ Never log credentials.
 Current priority order:
 
 1. Preserve the stable `dashboard-ui-v1.1` behavior
-2. Plan future React migration against `/api/dashboard`
-3. Confirm remaining SentinelOne aliases
-4. Define an auto-refresh strategy
+2. Integrate Securonix using the canonical tool model
+3. Stabilize `/api/dashboard` across all integrated tools
+4. Plan future React migration against `/api/dashboard`

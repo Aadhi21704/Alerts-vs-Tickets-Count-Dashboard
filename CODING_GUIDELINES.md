@@ -233,6 +233,16 @@ in place. Output records may contain the derived canonical client name.
 
 Unknown aliases must remain unchanged until a mapping is explicitly confirmed.
 
+Confirmed reseller account/site mappings may map multiple exact site names to
+one canonical managed client. Current examples:
+
+* `STAR_NRG` and `STAR_Banjara` map to `STAR HOSPITALS`
+* `Greenko-Energy-MDR` maps to `Greenko Energy Projects Private Limited`
+
+`Greenko-Energy-EDR` is excluded and must not be added to the mapping.
+
+Future aliases require manual confirmation before an exact mapping is added.
+
 ---
 
 # Error Handling

@@ -177,6 +177,13 @@ Current mappings:
 * `HNG` to `HEALTHNET GLOBAL LIMITED`
 * `Sudhakar_PVC` to `Sudhakar PVC products pvt ltd`
 * `Progility` to `Progility Technologies Pvt. Ltd.`
+* `STAR_NRG` to `STAR HOSPITALS`
+* `STAR_Banjara` to `STAR HOSPITALS`
+* `Greenko-Energy-MDR` to `Greenko Energy Projects Private Limited`
+
+The STAR mappings represent two sites under one reseller account. The
+Greenko MDR mapping represents a managed site under the Greenko Energy
+Projects Private Limited reseller account.
 
 Normalization occurs in the SentinelOne comparison flow before alerts and
 Jira tickets are grouped. Both sides therefore use the same canonical client
@@ -192,7 +199,8 @@ Current exclusion:
 
 Greenko-Energy-EDR
 
-This exclusion must remain in place.
+This exclusion must remain in place. `Greenko-Energy-EDR` must not be mapped
+to or included under the managed Greenko account.
 
 ---
 
@@ -394,9 +402,10 @@ Avoid duplicating configuration elsewhere.
 
 Future milestones:
 
-* Confirm remaining SentinelOne client aliases
 * Expand client normalization only through approved exact mappings
-* React migration planning using `/api/dashboard`
+* Integrate Securonix before React migration
+* Stabilize `/api/dashboard` across SentinelOne, Wazuh, and Securonix
+* React migration planning using the stabilized `/api/dashboard`
 * Auto-refresh strategy
 * Optional dashboard visualizations
 * Teams notifications
