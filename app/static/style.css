@@ -287,6 +287,31 @@ body {
     overflow-wrap: anywhere;
 }
 
+.refresh-controls {
+    align-items: center;
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px 12px;
+    margin-top: 8px;
+}
+
+.refresh-controls small {
+    color: #71859f;
+    font-size: 0.72rem;
+}
+
+.refresh-link {
+    color: #60a5fa;
+    font-size: 0.75rem;
+    font-weight: 700;
+    text-decoration: none;
+}
+
+.refresh-link:hover {
+    color: #93c5fd;
+    text-decoration: underline;
+}
+
 .status-badge {
     border: 1px solid;
     border-radius: 999px;

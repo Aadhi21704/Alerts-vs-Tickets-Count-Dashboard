@@ -3,6 +3,7 @@ from datetime import datetime
 import json
 import scheduler
 from zoneinfo import ZoneInfo
+from config import REFRESH_INTERVAL_MINUTES
 from fastapi import FastAPI
 from fastapi import HTTPException
 from fastapi import Request
@@ -328,6 +329,10 @@ def dashboard(request: Request):
             "timestamp": format_dashboard_timestamp(
                 data.get("timestamp")
             ),
+            "refresh_interval_seconds":
+                REFRESH_INTERVAL_MINUTES * 60,
+            "refresh_interval_minutes":
+                REFRESH_INTERVAL_MINUTES,
             "dashboard": dashboard_context,
             "tools": tools
         }

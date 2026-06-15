@@ -2,6 +2,10 @@
 <html>
 <head>
     <title>Security Operations Status Dashboard</title>
+    <meta
+        http-equiv="refresh"
+        content="{{ refresh_interval_seconds }}"
+    >
     <link rel="stylesheet" href="/static/style.css">
 </head>
 <body class="dashboard-page">
@@ -73,6 +77,16 @@
             <div class="hero-detail hero-detail--timestamp">
                 <span>Last Updated</span>
                 <strong>{{ timestamp }}</strong>
+                <div class="refresh-controls">
+                    <small>
+                        Auto-refreshes every
+                        {{ refresh_interval_minutes }}
+                        minute{% if refresh_interval_minutes != 1 %}s{% endif %}
+                    </small>
+                    <a class="refresh-link" href="/">
+                        Refresh now
+                    </a>
+                </div>
             </div>
         </div>
     </section>
