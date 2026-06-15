@@ -396,7 +396,7 @@ def get_data():
 
     data = load_dashboard_data()
 
-    # Temporary compatibility for the existing single-tool frontend.
+    # Deprecated legacy compatibility endpoint for single-tool consumers.
     if isinstance(data, dict) and "tools" in data:
 
         tools = data.get(
@@ -436,6 +436,12 @@ def get_data():
         ]
 
     return data
+
+
+@app.get("/api/dashboard")
+def get_dashboard_data():
+
+    return load_dashboard_data()
 
 
 @app.post("/api/update")
