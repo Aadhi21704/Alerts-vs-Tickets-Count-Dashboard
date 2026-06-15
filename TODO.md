@@ -20,10 +20,25 @@
 * [x] SentinelOne Jira comparison
 * [x] Greenko EDR exclusion
 * [x] Tool-card homepage
+* [x] Wazuh collector integration
+* [x] Wazuh Jira integration
+* [x] Wazuh comparator integration
+* [x] Wazuh dashboard integration
+* [x] UI Phase 1 polished homepage
+* [x] UI Phase 2 polished tool and client pages
+* [x] Client evidence display ordering
+
+### Application Cleanup
+
+* [x] Stop tracking Python cache files
+* [x] Lock down `/api/update` with HTTP 405
+* [x] Remove unused `app/static/app.js`
+* [x] Keep `/api/data` as deprecated legacy compatibility
+* [x] Add canonical read-only `/api/dashboard`
 
 ---
 
-## High Priority
+## Completed Wazuh Work
 
 ### Wazuh Collector
 
@@ -58,7 +73,7 @@ Rule Level >= 5
 
 Status:
 
-Not started
+Completed
 
 ---
 
@@ -80,7 +95,7 @@ Requirements:
 
 Status:
 
-Not started
+Completed
 
 ---
 
@@ -96,7 +111,7 @@ Requirements:
 
 Status:
 
-Not started
+Completed
 
 ---
 
@@ -122,11 +137,40 @@ Wazuh
 
 Status:
 
-Not started
+Completed
 
 ---
 
 ## Medium Priority
+
+### React Migration Planning
+
+Plan a future frontend migration using:
+
+`GET /api/dashboard`
+
+Requirements:
+
+* Preserve current routes during migration
+* Do not use deprecated `/api/data`
+* Keep the canonical `tools[]` schema
+
+Status:
+
+Planned
+
+---
+
+### Auto-Refresh Strategy
+
+Define a low-risk refresh approach for the current server-rendered pages and
+any future React frontend.
+
+Status:
+
+Planned
+
+---
 
 ### Client Normalization Framework
 
@@ -207,6 +251,23 @@ Planned
 
 ## Low Priority
 
+### Optional Charts and UI Polish
+
+Potential additions:
+
+* Small trend charts
+* Additional responsive polish
+* Optional tool-level visual summaries
+
+Charts must remain optional and must not replace the status-first dashboard
+design.
+
+Status:
+
+Future
+
+---
+
 ### Dashboard Metrics
 
 Add:
@@ -283,7 +344,7 @@ Future
 
 ## Notes
 
-Current active development focus:
+Completed development milestones:
 
 1. Wazuh Collector ✅
 2. Wazuh Jira Integration ✅
@@ -291,6 +352,14 @@ Current active development focus:
 4. Wazuh Dashboard Integration ✅
 5. Timestamp display polish ✅
 
-Do not redesign the dashboard unless explicitly requested.
+Current active development focus:
+
+1. Stable dashboard release `dashboard-ui-v1.1`
+2. React migration planning
+3. Auto-refresh strategy
+4. Client normalization improvements
+5. Optional charts and polish
+
+Do not replace the stable dashboard unless explicitly requested.
 
 Prefer extending the existing architecture over introducing new patterns.

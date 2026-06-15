@@ -174,7 +174,7 @@ Responsibilities:
 
 Status:
 
-Planned / In Progress
+Fully integrated
 
 ---
 
@@ -257,9 +257,14 @@ Current routes:
 /tool/{tool_name}          Tool Dashboard
 /tool/{tool_name}/client/{client_name}
                            Client Dashboard
-/api/data
+/api/dashboard             Canonical read-only dashboard API
+/api/data                  Deprecated legacy compatibility API
+/api/update                Disabled; returns HTTP 405
 /health
 ```
+
+Display-only transformations, including deltas and evidence ordering, are
+prepared in context builders before template rendering.
 
 ---
 
@@ -278,6 +283,8 @@ dashboard.html
 tool.html
 client.html
 ```
+
+These are the active server-rendered UI pages.
 
 Responsibilities:
 
@@ -301,10 +308,10 @@ Homepage.
 
 Displays:
 
-* Tool cards
-* Tool summaries
-* Future KPIs
-* Future charts
+* Overall reconciliation status
+* Alert and ticket totals
+* Priority mismatch
+* Tool health cards
 
 ---
 
@@ -316,9 +323,10 @@ Tool-level dashboard.
 
 Displays:
 
-* Tool counts
-* Client list
+* Tool status and totals
+* Client reconciliation list
 * Source tags
+* Client investigation links
 
 ---
 
@@ -334,6 +342,7 @@ Displays:
 * Ticket counts
 * Alert IDs
 * Jira Ticket IDs
+* Display-only evidence alignment
 
 ---
 
@@ -346,13 +355,11 @@ Frontend assets.
 Contains:
 
 * CSS
-* JavaScript
 
 Current files:
 
 ```text id="1a1vbt"
 style.css
-app.js
 ```
 
 ---
@@ -365,8 +372,9 @@ Dashboard styling.
 
 Responsibilities:
 
-* Layout
-* Cards
+* Dashboard, tool, and client page styling
+* SOC status presentation
+* Cards and evidence panels
 * Navigation styling
 * Responsive behavior
 
@@ -374,22 +382,10 @@ Responsibilities:
 
 ## app.js
 
-Purpose:
+Removed.
 
-Frontend interactions.
-
-Current responsibilities:
-
-* Dashboard refresh
-* Client expansion behavior
-* Data rendering
-
-Future responsibilities:
-
-* Dashboard enhancements
-* Visualization support
-
-Avoid placing business logic here.
+The active UI is server-rendered and no template references `app.js`. Do not
+reintroduce it without a clear requirement.
 
 ---
 

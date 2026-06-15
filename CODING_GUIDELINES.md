@@ -148,6 +148,16 @@ Avoid placing business rules directly in route handlers.
 
 Prefer helper functions when logic becomes reusable.
 
+Display-only transformations belong in `app/main.py` context builders.
+
+Examples:
+
+* Delta display values
+* Status presentation fields
+* Template-specific evidence ordering
+
+Do not mutate `latest.json` to support presentation requirements.
+
 ---
 
 # Templates
@@ -167,6 +177,12 @@ Avoid:
 * Data transformation
 
 Prepare data before sending it to templates.
+
+Client evidence ordering is a UI-only concern. Alert and Jira ticket display
+alignment must not change ordering in collectors, comparator output, or
+`latest.json`.
+
+Preserve original data fields and derive separate display fields when needed.
 
 ---
 
