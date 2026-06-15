@@ -14,6 +14,10 @@
         "tickets",
         client.get("jira_tickets", [])
     ) %}
+    {% set display_tickets = client.get(
+        "display_tickets",
+        tickets
+    ) %}
 
     <nav class="page-navigation" aria-label="Breadcrumb">
         <a href="/">Dashboard</a>
@@ -127,7 +131,7 @@
 
             {% if tickets %}
             <ul class="identifier-list">
-                {% for ticket in tickets %}
+                {% for ticket in display_tickets %}
                 <li>
                     <a
                         class="ticket-link"

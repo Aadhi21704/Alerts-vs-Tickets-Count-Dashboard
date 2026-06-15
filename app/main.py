@@ -139,6 +139,20 @@ def build_tool_context(tool):
 
 def build_client_context(client):
 
+    alerts = client.get(
+        "alerts",
+        client.get(
+            "sentinel_alerts",
+            []
+        )
+    )
+    tickets = client.get(
+        "tickets",
+        client.get(
+            "jira_tickets",
+            []
+        )
+    )
     alert_count = client.get(
         "alert_count",
         client.get(
@@ -161,6 +175,11 @@ def build_client_context(client):
         "ticket_count": ticket_count,
         "delta": delta,
         "delta_display": f"{delta:+d}",
+        "display_tickets": (
+            list(reversed(tickets))
+            if alerts and tickets
+            else tickets
+        ),
         "status": (
             "Equal"
             if alert_count == ticket_count
