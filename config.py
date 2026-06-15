@@ -45,7 +45,13 @@ SENTINELONE_CLIENT_MAPPING = {
     "Sudhakar_PVC":
         "Sudhakar PVC products pvt ltd",
     "Progility":
-        "Progility Technologies Pvt. Ltd."
+        "Progility Technologies Pvt. Ltd.",
+    "STAR_NRG":
+        "STAR HOSPITALS",
+    "STAR_Banjara":
+        "STAR HOSPITALS",
+    "Greenko-Energy-MDR":
+        "Greenko Energy Projects Private Limited"
 }
 
 SENTINELONE_SOURCES = [
