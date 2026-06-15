@@ -78,23 +78,7 @@ def find_client(tool, client_name):
 def build_tool_context(tool):
 
     clients = [
-        {
-            **client,
-            "alert_count": client.get(
-                "alert_count",
-                client.get(
-                    "sentinel_count",
-                    0
-                )
-            ),
-            "ticket_count": client.get(
-                "ticket_count",
-                client.get(
-                    "jira_count",
-                    0
-                )
-            )
-        }
+        build_client_context(client)
         for client in tool.get("clients", [])
     ]
 
@@ -114,29 +98,35 @@ def build_tool_context(tool):
         if client.get("status") != "Equal"
     )
 
+    alert_count = tool.get(
+        "alert_count",
+        tool.get(
+            "total_alerts",
+            tool.get(
+                "total_sentinel_count",
+                0
+            )
+        )
+    )
+    ticket_count = tool.get(
+        "ticket_count",
+        tool.get(
+            "total_tickets",
+            tool.get(
+                "total_jira_count",
+                0
+            )
+        )
+    )
+    delta = alert_count - ticket_count
+
     return {
         **tool,
         "clients": clients,
-        "alert_count": tool.get(
-            "alert_count",
-            tool.get(
-                "total_alerts",
-                tool.get(
-                    "total_sentinel_count",
-                    0
-                )
-            )
-        ),
-        "ticket_count": tool.get(
-            "ticket_count",
-            tool.get(
-                "total_tickets",
-                tool.get(
-                    "total_jira_count",
-                    0
-                )
-            )
-        ),
+        "alert_count": alert_count,
+        "ticket_count": ticket_count,
+        "delta": delta,
+        "delta_display": f"{delta:+d}",
         "client_count": len(clients),
         "mismatch_count": mismatch_count,
         "status":
@@ -144,6 +134,38 @@ def build_tool_context(tool):
             if mismatch_count == 0
             else
             "Mismatch"
+    }
+
+
+def build_client_context(client):
+
+    alert_count = client.get(
+        "alert_count",
+        client.get(
+            "sentinel_count",
+            0
+        )
+    )
+    ticket_count = client.get(
+        "ticket_count",
+        client.get(
+            "jira_count",
+            0
+        )
+    )
+    delta = alert_count - ticket_count
+
+    return {
+        **client,
+        "alert_count": alert_count,
+        "ticket_count": ticket_count,
+        "delta": delta,
+        "delta_display": f"{delta:+d}",
+        "status": (
+            "Equal"
+            if alert_count == ticket_count
+            else "Mismatch"
+        )
     }
 
 
@@ -350,23 +372,9 @@ def client_dashboard(
             detail="Client not found"
         )
 
-    client_context = {
-        **client,
-        "alert_count": client.get(
-            "alert_count",
-            client.get(
-                "sentinel_count",
-                0
-            )
-        ),
-        "ticket_count": client.get(
-            "ticket_count",
-            client.get(
-                "jira_count",
-                0
-            )
-        )
-    }
+    client_context = build_client_context(
+        client
+    )
 
     return templates.TemplateResponse(
         "client.html",
