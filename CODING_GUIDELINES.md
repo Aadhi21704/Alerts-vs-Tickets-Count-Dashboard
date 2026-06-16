@@ -114,6 +114,13 @@ Collectors must not:
 * Perform dashboard rendering
 * Contain FastAPI route logic
 
+Collectors must also avoid storing sensitive vendor fields when only evidence
+metadata is needed. For Securonix, never include:
+
+* `violatorText`
+* `violatorId`
+* `solrquery`
+
 ---
 
 # Comparator

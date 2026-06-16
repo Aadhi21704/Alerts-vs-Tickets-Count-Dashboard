@@ -2,6 +2,9 @@ import requests
 
 from config import (
     JIRA_URL,
+    SECURONIX_ALLOWED_CLIENTS,
+    SECURONIX_JIRA_TENANT_FIELD,
+    SECURONIX_JIRA_WINDOW_HOURS,
     SENTINELONE_JIRA_WINDOW_HOURS,
     WAZUH_CLIENT_MAPPING,
     WAZUH_JIRA_WINDOW_HOURS,
@@ -260,6 +263,98 @@ def fetch_wazuh_jira_tickets(
 
         tenant_values = fields.get(
             WAZUH_JIRA_TENANT_FIELD
+        )
+
+        if not isinstance(
+            tenant_values,
+            list
+        ):
+            continue
+
+        matched_clients = {
+            value.strip()
+            for value in tenant_values
+            if (
+                isinstance(value, str)
+                and
+                value.strip()
+                in allowed_client_set
+            )
+        }
+
+        if len(matched_clients) != 1:
+            continue
+
+        client = matched_clients.pop()
+
+        tickets.append(
+            {
+                "key": issue["key"],
+                "client": client,
+                "summary":
+                    fields.get(
+                        "summary",
+                        ""
+                    ),
+                "created":
+                    fields.get(
+                        "created",
+                        ""
+                    )
+            }
+        )
+
+    return tickets
+
+
+def fetch_securonix_jira_tickets(
+    email,
+    api_token
+):
+
+    allowed_clients = sorted(
+        SECURONIX_ALLOWED_CLIENTS
+    )
+
+    jql_clients = ", ".join(
+        f'"{client}"'
+        for client in allowed_clients
+    )
+
+    jql = f'''
+        "tenant name[labels]" IN ({jql_clients})
+        AND created >= -{SECURONIX_JIRA_WINDOW_HOURS}h
+        AND issuetype = "Security Incident"
+        AND project = NSIR
+        ORDER BY created DESC
+    '''.strip()
+
+    all_issues = _fetch_jira_issues(
+        email,
+        api_token,
+        jql,
+        [
+            "summary",
+            "created",
+            SECURONIX_JIRA_TENANT_FIELD
+        ]
+    )
+
+    allowed_client_set = set(
+        allowed_clients
+    )
+
+    tickets = []
+
+    for issue in all_issues:
+
+        fields = issue.get(
+            "fields",
+            {}
+        )
+
+        tenant_values = fields.get(
+            SECURONIX_JIRA_TENANT_FIELD
         )
 
         if not isinstance(

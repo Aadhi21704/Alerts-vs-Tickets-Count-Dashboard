@@ -24,6 +24,10 @@
 * [x] Wazuh Jira integration
 * [x] Wazuh comparator integration
 * [x] Wazuh dashboard integration
+* [x] Securonix collector integration
+* [x] Securonix Jira integration
+* [x] Securonix comparator integration
+* [x] Securonix dashboard integration
 * [x] UI Phase 1 polished homepage
 * [x] UI Phase 2 polished tool and client pages
 * [x] Client evidence display ordering
@@ -164,8 +168,7 @@ Requirements:
 * Preserve current routes during migration
 * Do not use deprecated `/api/data`
 * Keep the canonical `tools[]` schema
-* Begin only after Securonix is integrated and the API model is stable across
-  SentinelOne, Wazuh, and Securonix
+* Use the stabilized API model across SentinelOne, Wazuh, and Securonix
 
 Status:
 
@@ -328,7 +331,6 @@ Future
 
 Potential future tools:
 
-* Securonix
 * Microsoft Defender
 * CrowdStrike
 * FortiAnalyzer
@@ -352,15 +354,15 @@ Completed development milestones:
 2. Wazuh Jira Integration ✅
 3. Wazuh Comparator ✅
 4. Wazuh Dashboard Integration ✅
-5. Timestamp display polish ✅
+5. Securonix Integration ✅
+6. Timestamp display polish ✅
 
 Current active development focus:
 
 1. Stable dashboard release `dashboard-ui-v1.1`
-2. Securonix integration
-3. Stabilize the canonical API and data model across all integrated tools
-4. React migration planning
-5. Optional charts and polish
+2. Stabilize the canonical API and data model across all integrated tools
+3. React migration planning
+4. Optional charts and polish
 
 Do not replace the stable dashboard unless explicitly requested.
 

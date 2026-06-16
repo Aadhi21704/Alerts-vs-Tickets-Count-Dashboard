@@ -18,6 +18,14 @@
         "display_tickets",
         tickets
     ) %}
+    {% set evidence_label = "Incident IDs"
+        if tool.tool_key == "securonix"
+        else "Alert IDs"
+    %}
+    {% set source_label = "Incidents"
+        if tool.tool_key == "securonix"
+        else "Alerts"
+    %}
 
     <nav class="page-navigation" aria-label="Breadcrumb">
         <a href="/">Dashboard</a>
@@ -48,7 +56,11 @@
                 </p>
                 <h1>{{ client.client }}</h1>
                 <p>
-                    Alert and Jira ticket evidence for this client.
+                    {% if tool.tool_key == "securonix" %}
+                        Incident and Jira ticket evidence for this client.
+                    {% else %}
+                        Alert and Jira ticket evidence for this client.
+                    {% endif %}
                 </p>
             </div>
             <span class="status-badge
@@ -64,7 +76,7 @@
 
         <div class="page-hero__metrics page-hero__metrics--client">
             <div>
-                <span>Alerts</span>
+                <span>{{ source_label }}</span>
                 <strong>{{ client.alert_count }}</strong>
             </div>
             <div>
@@ -85,7 +97,7 @@
                     <p class="dashboard-eyebrow">
                         Source Evidence
                     </p>
-                    <h2>Alert IDs</h2>
+                    <h2>{{ evidence_label }}</h2>
                 </div>
                 <span class="evidence-count">
                     {{ alerts | length }}
@@ -97,6 +109,24 @@
                 {% for alert in alerts %}
                 <li>
                     <code>{{ alert.id }}</code>
+                    {% if tool.tool_key == "securonix" %}
+                        {% if alert.status %}
+                            <span>Status: {{ alert.status }}</span>
+                        {% endif %}
+                        {% if alert.priority %}
+                            <span>Priority: {{ alert.priority }}</span>
+                        {% endif %}
+                        {% if alert.url %}
+                            <a
+                                class="ticket-link"
+                                href="{{ alert.url }}"
+                                target="_blank"
+                                rel="noopener noreferrer"
+                            >
+                                Open incident
+                            </a>
+                        {% endif %}
+                    {% endif %}
                 </li>
                 {% endfor %}
             </ul>
@@ -109,6 +139,8 @@
                 {% if tool.tool_key == "wazuh" %}
                     Wazuh alert IDs are not available from the
                     WHB API yet.
+                {% elif tool.tool_key == "securonix" %}
+                    No incident IDs available for this source.
                 {% else %}
                     No alert IDs available for this source.
                 {% endif %}

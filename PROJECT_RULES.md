@@ -44,6 +44,7 @@ The following items are considered completed and should not be reimplemented:
 * Alert ID drilldowns
 * Jira Ticket ID drilldowns
 * Wazuh collector, Jira, comparator, and dashboard integration
+* Securonix collector, Jira, comparator, and dashboard integration
 * Polished FastAPI, Jinja, and CSS dashboard UI
 * Canonical read-only `/api/dashboard` endpoint
 * Disabled `/api/update` endpoint
@@ -390,6 +391,38 @@ Do not create placeholder alerts or clients.
 
 ---
 
+# Securonix Rules
+
+Current source:
+
+Securonix SNYPR API
+
+Current endpoint:
+
+`/ws/incident/get`
+
+Authentication:
+
+Use the WS token header named `token`. Do not use JWT or Bearer auth.
+
+Current requirements:
+
+* opened incident window = 24 hours
+* clients = QuisLex, NopalCyber
+* Jira project = NSIR
+* Jira issue type = Security Incident
+
+Securonix is raw incident-list style like SentinelOne, not count-only like
+Wazuh.
+
+Never store or display these Securonix fields:
+
+* `violatorText`
+* `violatorId`
+* `solrquery`
+
+---
+
 # Jira Rules
 
 ## SentinelOne
@@ -409,6 +442,22 @@ Wazuh Alert
 Client source:
 
 Tenant Name
+
+---
+
+## Securonix
+
+Issue Type:
+
+Security Incident
+
+Project:
+
+NSIR
+
+Client source:
+
+Tenant Name labels field
 
 ---
 
@@ -446,8 +495,6 @@ Comparator must not:
 
 Future tools may include:
 
-* Wazuh
-* Securonix
 * Microsoft Defender
 * CrowdStrike
 * FortiAnalyzer
@@ -459,12 +506,6 @@ They should not require:
 * Dashboard redesign
 * Route redesign
 * Template duplication
-
-Securonix integration should be completed before React migration. This allows
-the canonical API and data model to stabilize across SentinelOne, Wazuh, and
-Securonix first.
-
----
 
 # Future Dashboard Features
 
@@ -505,6 +546,6 @@ Never log credentials.
 Current priority order:
 
 1. Preserve the stable `dashboard-ui-v1.1` behavior
-2. Integrate Securonix using the canonical tool model
-3. Stabilize `/api/dashboard` across all integrated tools
-4. Plan future React migration against `/api/dashboard`
+2. Stabilize `/api/dashboard` across all integrated tools
+3. Plan future React migration against `/api/dashboard`
+4. Define an auto-refresh strategy

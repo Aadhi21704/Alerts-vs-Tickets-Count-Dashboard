@@ -36,6 +36,10 @@ MANAGED_CLIENTS = {
         "Progility Technologies Pvt. Ltd.": ["reseller"],
         "Mythri Hospital": ["reseller"],
         "Revalsys Technologies PVT LTD": ["reseller"]
+    },
+    "securonix": {
+        "QuisLex": ["securonix"],
+        "NopalCyber": ["securonix"]
     }
 }
 
@@ -111,3 +115,23 @@ JIRA_URL = (
 )
 
 WAZUH_JIRA_TENANT_FIELD = "customfield_10202"
+
+# Securonix
+SECURONIX_INCIDENT_WINDOW_HOURS = 24
+
+SECURONIX_JIRA_WINDOW_HOURS = 24
+
+SECURONIX_ALLOWED_CLIENTS = [
+    "QuisLex",
+    "NopalCyber"
+]
+
+SECURONIX_CLIENT_MAPPING = {
+    "Nopal Cyber": "NopalCyber"
+}
+
+SECURONIX_INCIDENT_PAGE_SIZE = 100
+
+SECURONIX_VERIFY_SSL = True
+
+SECURONIX_JIRA_TENANT_FIELD = WAZUH_JIRA_TENANT_FIELD

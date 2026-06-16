@@ -126,6 +126,7 @@ Examples:
 collectors/
 ├─ sentinelone.py
 ├─ wazuh.py
+├─ securonix.py
 ```
 
 Collectors must not:
@@ -179,6 +180,37 @@ Fully integrated
 
 ---
 
+## collectors/securonix.py
+
+Purpose:
+
+Collect Securonix incidents.
+
+Source:
+
+Securonix SNYPR API
+
+Responsibilities:
+
+* Call `/ws/incident/get`
+* Authenticate with WS token header `token`
+* Query opened incidents in the configured 24-hour window
+* Apply allowed-client filtering
+* Normalize safe incident evidence records
+* Exclude sensitive Securonix fields
+
+Sensitive fields that must not be stored:
+
+* `violatorText`
+* `violatorId`
+* `solrquery`
+
+Status:
+
+Fully integrated
+
+---
+
 # comparison/
 
 Purpose:
@@ -213,6 +245,7 @@ Current responsibilities:
 * Client status
 * Source aggregation
 * Exact SentinelOne alias normalization before grouping
+* Raw Securonix incident-list comparison
 
 `compare_data()` accepts the configured SentinelOne client mapping. It applies
 the same exact mapping to alert and Jira records before grouping them under a
@@ -425,7 +458,6 @@ Expected future additions:
 collectors/
 ├─ sentinelone.py
 ├─ wazuh.py
-├─ securonix.py
 ├─ defender.py
 ```
 

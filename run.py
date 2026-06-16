@@ -20,14 +20,20 @@ from collectors.wazuh import (
     fetch_wazuh_alerts
 )
 
+from collectors.securonix import (
+    fetch_securonix_incidents
+)
+
 from collectors.jira import (
     fetch_jira_tickets,
+    fetch_securonix_jira_tickets,
     fetch_wazuh_jira_tickets
 )
 
 from comparison.comparator import (
     compare_count_data,
-    compare_data
+    compare_data,
+    compare_list_data
 )
 
 urllib3.disable_warnings(
@@ -181,6 +187,60 @@ def main():
             source="wazuh"
         )
 
+        securonix_base_url = os.getenv(
+            "SECURONIX_BASE_URL"
+        )
+
+        securonix_token = os.getenv(
+            "SECURONIX_TOKEN"
+        )
+
+        if not securonix_base_url:
+            raise ValueError(
+                "SECURONIX_BASE_URL not set"
+            )
+
+        if not securonix_token:
+            raise ValueError(
+                "SECURONIX_TOKEN not set"
+            )
+
+        securonix_incidents = (
+            fetch_securonix_incidents(
+                securonix_base_url,
+                securonix_token
+            )
+        )
+
+        logger.info(
+            f"Securonix: "
+            f"{len(securonix_incidents)} "
+            f"incidents retrieved"
+        )
+
+        securonix_jira_tickets = (
+            fetch_securonix_jira_tickets(
+                jira_email,
+                jira_token
+            )
+        )
+
+        logger.info(
+            f"Securonix Jira: "
+            f"{len(securonix_jira_tickets)} "
+            f"tickets retrieved"
+        )
+
+        securonix_result = compare_list_data(
+            securonix_incidents,
+            securonix_jira_tickets,
+            source="securonix",
+            managed_clients=MANAGED_CLIENTS.get(
+                "securonix",
+                {}
+            )
+        )
+
         dashboard_data = {
             "timestamp": timestamp,
             "tools": [
@@ -193,6 +253,11 @@ def main():
                     "tool": "Wazuh",
                     "tool_key": "wazuh",
                     **wazuh_result
+                },
+                {
+                    "tool": "Securonix",
+                    "tool_key": "securonix",
+                    **securonix_result
                 }
             ]
         }

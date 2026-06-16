@@ -259,6 +259,54 @@ API.
 
 ---
 
+## Securonix
+
+Status:
+
+Fully integrated.
+
+Current source:
+
+Securonix SNYPR incident API
+
+Endpoint:
+
+`GET {SECURONIX_BASE_URL}/ws/incident/get`
+
+Authentication:
+
+WS token header named `token`.
+
+Current parameters:
+
+* `type=list`
+* `rangeType=opened`
+* `order=desc`
+* 24-hour opened incident window
+
+Current allowed clients:
+
+* QuisLex
+* NopalCyber
+
+Jira integration:
+
+* Project: NSIR
+* Issue type: Security Incident
+* Client source: Tenant Name labels field
+
+Securonix uses raw incident-list comparison like SentinelOne. Incident records
+are compared against Jira tickets per client and are stored under generic
+`alerts` evidence fields for dashboard compatibility.
+
+Sensitive Securonix fields are excluded and must not be stored or displayed:
+
+* `violatorText`
+* `violatorId`
+* `solrquery`
+
+---
+
 # Current Dashboard Structure
 
 ## Page 1
@@ -294,6 +342,8 @@ Examples:
 
 /tool/wazuh
 
+/tool/securonix
+
 ---
 
 ## Page 3
@@ -312,6 +362,8 @@ Examples:
 /tool/sentinelone/client/QuisLex
 
 /tool/wazuh/client/NCC-Bihar
+
+/tool/securonix/client/QuisLex
 
 ---
 
@@ -403,8 +455,6 @@ Avoid duplicating configuration elsewhere.
 Future milestones:
 
 * Expand client normalization only through approved exact mappings
-* Integrate Securonix before React migration
-* Stabilize `/api/dashboard` across SentinelOne, Wazuh, and Securonix
 * React migration planning using the stabilized `/api/dashboard`
 * Auto-refresh strategy
 * Optional dashboard visualizations
