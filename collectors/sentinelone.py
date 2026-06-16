@@ -5,7 +5,7 @@ import requests
 from config import (
     MSSP_ALLOWED_CLIENTS,
     RESSELLER_EXCLUDED_CLIENTS,
-    DAYS_BACK
+    SENTINELONE_ALERT_WINDOW_HOURS
 )
 
 
@@ -18,7 +18,9 @@ def fetch_sentinelone_alerts(
 
     created_after = (
         datetime.now(UTC)
-        - timedelta(days=DAYS_BACK)
+        - timedelta(
+            hours=SENTINELONE_ALERT_WINDOW_HOURS
+        )
     ).isoformat()
 
     headers = {

@@ -1,10 +1,10 @@
 import requests
 
 from config import (
-    DAYS_BACK,
     JIRA_URL,
+    SENTINELONE_JIRA_WINDOW_HOURS,
     WAZUH_CLIENT_MAPPING,
-    WAZUH_HOURS,
+    WAZUH_JIRA_WINDOW_HOURS,
     WAZUH_JIRA_TENANT_FIELD
 )
 
@@ -153,7 +153,7 @@ def fetch_jira_tickets(
 
     jql = f'''
         issuetype = SentinelOne
-        AND created >= -{DAYS_BACK}d
+        AND created >= -{SENTINELONE_JIRA_WINDOW_HOURS}h
         AND project = NSIR
         ORDER BY created DESC
     '''.strip()
@@ -228,7 +228,7 @@ def fetch_wazuh_jira_tickets(
 
     jql = f'''
         "Tenant Name[Labels]" IN ({quoted_clients})
-        AND created >= -{WAZUH_HOURS}h
+        AND created >= -{WAZUH_JIRA_WINDOW_HOURS}h
         AND project = NSIR
         AND type = "Wazuh Alert"
         ORDER BY created DESC
