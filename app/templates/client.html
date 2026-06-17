@@ -45,6 +45,8 @@
     <section class="page-hero
         {% if client.status == 'Equal' %}
             page-hero--equal
+        {% elif client.status == 'Covered with Warning' %}
+            page-hero--warning
         {% else %}
             page-hero--mismatch
         {% endif %}
@@ -66,6 +68,8 @@
             <span class="status-badge
                 {% if client.status == 'Equal' %}
                     status-badge--equal
+                {% elif client.status == 'Covered with Warning' %}
+                    status-badge--warning
                 {% else %}
                     status-badge--mismatch
                 {% endif %}
@@ -89,6 +93,37 @@
             </div>
         </div>
     </section>
+
+    {% if client.strict_ticket_count is defined %}
+    <section class="correlation-details">
+        <div class="section-heading">
+            <div>
+                <p class="dashboard-eyebrow">
+                    Wazuh Correlation
+                </p>
+                <h2>Correlation Details</h2>
+            </div>
+        </div>
+        <div class="correlation-summary correlation-summary--standalone">
+            <div>
+                <span>Strict Tickets</span>
+                <strong>{{ client.strict_ticket_count | default(0) }}</strong>
+            </div>
+            <div>
+                <span>Correlated Tickets</span>
+                <strong>{{ client.correlated_ticket_count | default(0) }}</strong>
+            </div>
+            <div>
+                <span>Metadata Drift</span>
+                <strong>{{ client.metadata_drift_count | default(0) }}</strong>
+            </div>
+            <div>
+                <span>Unmapped Tickets</span>
+                <strong>{{ tool.unmapped_ticket_count | default(0) }}</strong>
+            </div>
+        </div>
+    </section>
+    {% endif %}
 
     <section class="investigation-grid">
         <article class="evidence-panel">
@@ -167,12 +202,28 @@
                 <li>
                     <a
                         class="ticket-link"
-                        href="https://nopalcyber.atlassian.net/browse/{{ ticket.key }}"
+                        href="https://nopalcyber.atlassian.net/browse/{{ ticket.key | default(ticket.jira_key) }}"
                         target="_blank"
                         rel="noopener noreferrer"
                     >
-                        {{ ticket.key }}
+                        {{ ticket.key | default(ticket.jira_key) }}
                     </a>
+                    {% if ticket.rule_id %}
+                    <span>Rule: {{ ticket.rule_id }}</span>
+                    {% endif %}
+                    {% if ticket.status %}
+                    <span>Status: {{ ticket.status }}</span>
+                    {% endif %}
+                    {% if ticket.client_resolution_source %}
+                    <span>Resolution: {{ ticket.client_resolution_source }}</span>
+                    {% endif %}
+                    {% if ticket.metadata_issues %}
+                    <div class="warning-badge-list">
+                        {% for issue in ticket.metadata_issues %}
+                        <span class="warning-badge">{{ issue }}</span>
+                        {% endfor %}
+                    </div>
+                    {% endif %}
                 </li>
                 {% endfor %}
             </ul>

@@ -335,6 +335,12 @@ body {
     color: #fca5a5;
 }
 
+.status-badge--warning {
+    background: rgba(245, 158, 11, 0.13);
+    border-color: rgba(245, 158, 11, 0.5);
+    color: #fbbf24;
+}
+
 .summary-grid {
     display: grid;
     gap: 16px;
@@ -688,6 +694,10 @@ body {
     border-left-color: #ef4444;
 }
 
+.page-hero--warning {
+    border-left-color: #f59e0b;
+}
+
 .page-hero__heading {
     align-items: flex-start;
     display: flex;
@@ -735,6 +745,39 @@ body {
 
 .page-hero__metrics strong {
     font-size: 1.45rem;
+}
+
+.correlation-summary {
+    border-top: 1px solid #25364d;
+    display: grid;
+    gap: 14px;
+    grid-template-columns:
+        repeat(4, minmax(0, 1fr));
+    margin-top: 18px;
+    padding-top: 18px;
+}
+
+.correlation-summary--standalone {
+    background: #101c2e;
+    border: 1px solid #25364d;
+    border-radius: 10px;
+    margin-top: 12px;
+    padding: 16px 18px;
+}
+
+.correlation-summary span {
+    color: #8ea2bd;
+    display: block;
+    font-size: 0.72rem;
+    font-weight: 700;
+    letter-spacing: 0.07em;
+    margin-bottom: 5px;
+    text-transform: uppercase;
+}
+
+.correlation-summary strong {
+    color: #f8fafc;
+    font-size: 1.2rem;
 }
 
 .client-list-section > .section-heading {
@@ -787,6 +830,16 @@ body {
     border-left-color: #ef4444;
 }
 
+.client-status-row--warning {
+    background:
+        linear-gradient(
+            90deg,
+            rgba(245, 158, 11, 0.08),
+            #101c2e 24%
+        );
+    border-left-color: #f59e0b;
+}
+
 .client-identity {
     min-width: 0;
 }
@@ -821,6 +874,11 @@ body {
         repeat(3, minmax(0, 1fr));
 }
 
+.row-metrics--wazuh {
+    grid-template-columns:
+        repeat(4, minmax(0, 1fr));
+}
+
 .row-metrics strong {
     font-size: 1rem;
 }
@@ -843,6 +901,10 @@ body {
     gap: 18px;
     grid-template-columns:
         repeat(2, minmax(0, 1fr));
+}
+
+.correlation-details {
+    margin-bottom: 18px;
 }
 
 .evidence-panel {
@@ -895,6 +957,14 @@ body {
     overflow-wrap: anywhere;
 }
 
+.identifier-list li > span {
+    color: #9fb0c5;
+    display: block;
+    font-size: 0.82rem;
+    margin-top: 7px;
+    overflow-wrap: anywhere;
+}
+
 .ticket-link {
     color: #60a5fa;
     display: block;
@@ -905,6 +975,25 @@ body {
     font-weight: 700;
     overflow-wrap: anywhere;
     text-decoration: none;
+}
+
+.warning-badge-list {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+    margin-top: 9px;
+}
+
+.warning-badge {
+    background: rgba(245, 158, 11, 0.12);
+    border: 1px solid rgba(245, 158, 11, 0.45);
+    border-radius: 999px;
+    color: #fbbf24;
+    font-size: 0.68rem;
+    font-weight: 800;
+    letter-spacing: 0.05em;
+    padding: 4px 7px;
+    text-transform: uppercase;
 }
 
 .ticket-link:hover {
@@ -954,7 +1043,8 @@ body {
 
 @media (max-width: 700px) {
     .page-hero__metrics,
-    .page-hero__metrics--client {
+    .page-hero__metrics--client,
+    .correlation-summary {
         grid-template-columns:
             repeat(2, minmax(0, 1fr));
     }
@@ -999,7 +1089,8 @@ body {
     }
 
     .page-hero__metrics,
-    .page-hero__metrics--client {
+    .page-hero__metrics--client,
+    .correlation-summary {
         grid-template-columns:
             repeat(2, minmax(0, 1fr));
     }
@@ -1015,7 +1106,8 @@ body {
         grid-row: auto;
     }
 
-    .row-metrics {
+    .row-metrics,
+    .row-metrics--wazuh {
         grid-template-columns:
             repeat(3, minmax(0, 1fr));
     }

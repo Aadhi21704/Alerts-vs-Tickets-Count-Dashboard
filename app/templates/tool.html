@@ -15,6 +15,8 @@
     <section class="page-hero
         {% if tool.status == 'Equal' %}
             page-hero--equal
+        {% elif tool.status == 'Covered with Warning' %}
+            page-hero--warning
         {% else %}
             page-hero--mismatch
         {% endif %}
@@ -32,6 +34,8 @@
             <span class="status-badge
                 {% if tool.status == 'Equal' %}
                     status-badge--equal
+                {% elif tool.status == 'Covered with Warning' %}
+                    status-badge--warning
                 {% else %}
                     status-badge--mismatch
                 {% endif %}
@@ -58,6 +62,27 @@
                 <strong>{{ tool.mismatch_count }}</strong>
             </div>
         </div>
+
+        {% if tool.strict_total_tickets is defined %}
+        <div class="correlation-summary">
+            <div>
+                <span>Strict Tickets</span>
+                <strong>{{ tool.strict_total_tickets | default(0) }}</strong>
+            </div>
+            <div>
+                <span>Correlated Tickets</span>
+                <strong>{{ tool.correlated_total_tickets | default(0) }}</strong>
+            </div>
+            <div>
+                <span>Metadata Drift</span>
+                <strong>{{ tool.metadata_drift_total | default(0) }}</strong>
+            </div>
+            <div>
+                <span>Unmapped Tickets</span>
+                <strong>{{ tool.unmapped_ticket_count | default(0) }}</strong>
+            </div>
+        </div>
+        {% endif %}
     </section>
 
     <section class="client-list-section">
@@ -78,6 +103,8 @@
             <article class="client-status-row
                 {% if client.status == 'Equal' %}
                     client-status-row--equal
+                {% elif client.status == 'Covered with Warning' %}
+                    client-status-row--warning
                 {% else %}
                     client-status-row--mismatch
                 {% endif %}
@@ -93,24 +120,47 @@
                     </div>
                 </div>
 
-                <div class="row-metrics">
+                <div class="row-metrics
+                    {% if client.strict_ticket_count is defined %}
+                        row-metrics--wazuh
+                    {% endif %}
+                ">
                     <div>
                         <span>Alerts</span>
                         <strong>{{ client.alert_count }}</strong>
                     </div>
                     <div>
-                        <span>Tickets</span>
+                        <span>
+                            {% if client.correlated_ticket_count is defined %}
+                                Correlated Tickets
+                            {% else %}
+                                Tickets
+                            {% endif %}
+                        </span>
                         <strong>{{ client.ticket_count }}</strong>
                     </div>
+                    {% if client.strict_ticket_count is defined %}
+                    <div>
+                        <span>Strict Tickets</span>
+                        <strong>{{ client.strict_ticket_count | default(0) }}</strong>
+                    </div>
+                    <div>
+                        <span>Metadata Drift</span>
+                        <strong>{{ client.metadata_drift_count | default(0) }}</strong>
+                    </div>
+                    {% else %}
                     <div>
                         <span>Delta</span>
                         <strong>{{ client.delta_display }}</strong>
                     </div>
+                    {% endif %}
                 </div>
 
                 <span class="status-badge
                     {% if client.status == 'Equal' %}
                         status-badge--equal
+                    {% elif client.status == 'Covered with Warning' %}
+                        status-badge--warning
                     {% else %}
                         status-badge--mismatch
                     {% endif %}

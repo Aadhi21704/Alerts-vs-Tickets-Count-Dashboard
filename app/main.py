@@ -96,7 +96,12 @@ def build_tool_context(tool):
     mismatch_count = sum(
         1
         for client in clients
-        if client.get("status") != "Equal"
+        if client.get("status") == "Mismatch"
+    )
+    warning_count = sum(
+        1
+        for client in clients
+        if client.get("status") == "Covered with Warning"
     )
 
     alert_count = tool.get(
@@ -130,11 +135,16 @@ def build_tool_context(tool):
         "delta_display": f"{delta:+d}",
         "client_count": len(clients),
         "mismatch_count": mismatch_count,
-        "status":
-            "Equal"
-            if mismatch_count == 0
-            else
+        "warning_count": warning_count,
+        "status": (
             "Mismatch"
+            if mismatch_count
+            else (
+                "Covered with Warning"
+                if warning_count
+                else "Equal"
+            )
+        )
     }
 
 
@@ -181,10 +191,13 @@ def build_client_context(client):
             if alerts and tickets
             else tickets
         ),
-        "status": (
-            "Equal"
-            if alert_count == ticket_count
-            else "Mismatch"
+        "status": client.get(
+            "status",
+            (
+                "Equal"
+                if alert_count == ticket_count
+                else "Mismatch"
+            )
         )
     }
 
@@ -249,7 +262,7 @@ def dashboard(request: Request):
 
         for client in tool["clients"]:
 
-            if client.get("status") == "Equal":
+            if client.get("status") != "Mismatch":
                 continue
 
             tool_has_mismatch = True
