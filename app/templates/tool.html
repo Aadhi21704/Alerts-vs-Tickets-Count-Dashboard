@@ -13,9 +13,9 @@
     </nav>
 
     <section class="page-hero
-        {% if tool.status == 'Equal' %}
+        {% if tool.tool_display_status == 'Equal' %}
             page-hero--equal
-        {% elif tool.status == 'Covered with Warning' %}
+        {% elif tool.tool_display_status == 'Triaging' %}
             page-hero--warning
         {% else %}
             page-hero--mismatch
@@ -32,15 +32,15 @@
                 </p>
             </div>
             <span class="status-badge
-                {% if tool.status == 'Equal' %}
+                {% if tool.tool_display_status == 'Equal' %}
                     status-badge--equal
-                {% elif tool.status == 'Covered with Warning' %}
+                {% elif tool.tool_display_status == 'Triaging' %}
                     status-badge--warning
                 {% else %}
                     status-badge--mismatch
                 {% endif %}
             ">
-                {{ tool.status }}
+                {{ tool.tool_display_status }}
             </span>
         </div>
 
@@ -58,29 +58,52 @@
                 <strong>{{ tool.delta_display }}</strong>
             </div>
             <div>
-                <span>Mismatches</span>
-                <strong>{{ tool.mismatch_count }}</strong>
+                <span>
+                    {% if tool.strict_total_tickets is defined %}
+                        Clients Needing Review
+                    {% else %}
+                        Mismatches
+                    {% endif %}
+                </span>
+                <strong>
+                    {% if tool.strict_total_tickets is defined %}
+                        {{ tool.review_count | default(0) }}
+                    {% else %}
+                        {{ tool.mismatch_count }}
+                    {% endif %}
+                </strong>
             </div>
         </div>
 
-        {% if tool.strict_total_tickets is defined %}
-        <div class="correlation-summary">
-            <div>
-                <span>Strict Tickets</span>
-                <strong>{{ tool.strict_total_tickets | default(0) }}</strong>
-            </div>
-            <div>
-                <span>Correlated Tickets</span>
-                <strong>{{ tool.correlated_total_tickets | default(0) }}</strong>
-            </div>
-            <div>
-                <span>Metadata Drift</span>
-                <strong>{{ tool.metadata_drift_total | default(0) }}</strong>
-            </div>
-            <div>
-                <span>Unmapped Tickets</span>
-                <strong>{{ tool.unmapped_ticket_count | default(0) }}</strong>
-            </div>
+        {% if (
+            tool.strict_total_tickets is defined
+            and (
+                tool.missing_ticket_total | default(0) > 0
+                or tool.extra_ticket_total | default(0) > 0
+                or tool.unmapped_ticket_count | default(0) > 0
+            )
+        ) %}
+        <div class="tool-diagnostic-strip">
+            {% if tool.missing_ticket_total | default(0) > 0 %}
+            <span class="insight-chip insight-chip--danger">
+                {{ tool.missing_ticket_total }} missing Jira tickets
+            </span>
+            {% endif %}
+            {% if tool.extra_ticket_total | default(0) > 0 %}
+            <span class="insight-chip insight-chip--warning">
+                {{ tool.extra_ticket_total }} extra Jira tickets
+            </span>
+            {% endif %}
+            {% if tool.unmapped_ticket_count | default(0) > 0 %}
+            <span class="insight-chip insight-chip--warning">
+                {{ tool.unmapped_ticket_count }} unmapped tickets
+            </span>
+            {% endif %}
+            {% if tool.extra_ticket_total | default(0) > 0 %}
+            <span class="insight-helper">
+                Review triage, escalation, duplicate, or stale-ticket behavior.
+            </span>
+            {% endif %}
         </div>
         {% endif %}
     </section>
@@ -101,9 +124,9 @@
         <div class="operations-list">
             {% for client in tool.clients %}
             <article class="client-status-row
-                {% if client.status == 'Equal' %}
+                {% if client.tool_display_status == 'Equal' %}
                     client-status-row--equal
-                {% elif client.status == 'Covered with Warning' %}
+                {% elif client.tool_display_status == 'Triaging' %}
                     client-status-row--warning
                 {% else %}
                     client-status-row--mismatch
@@ -132,7 +155,7 @@
                     <div>
                         <span>
                             {% if client.correlated_ticket_count is defined %}
-                                Correlated Tickets
+                                Tickets
                             {% else %}
                                 Tickets
                             {% endif %}
@@ -141,12 +164,10 @@
                     </div>
                     {% if client.strict_ticket_count is defined %}
                     <div>
-                        <span>Strict Tickets</span>
-                        <strong>{{ client.strict_ticket_count | default(0) }}</strong>
-                    </div>
-                    <div>
-                        <span>Metadata Drift</span>
-                        <strong>{{ client.metadata_drift_count | default(0) }}</strong>
+                        <span>Delta</span>
+                        <strong>
+                            {{ client.coverage_delta_display | default("0") }}
+                        </strong>
                     </div>
                     {% else %}
                     <div>
@@ -157,15 +178,15 @@
                 </div>
 
                 <span class="status-badge
-                    {% if client.status == 'Equal' %}
+                    {% if client.tool_display_status == 'Equal' %}
                         status-badge--equal
-                    {% elif client.status == 'Covered with Warning' %}
+                    {% elif client.tool_display_status == 'Triaging' %}
                         status-badge--warning
                     {% else %}
                         status-badge--mismatch
                     {% endif %}
                 ">
-                    {{ client.status }}
+                    {{ client.tool_display_status }}
                 </span>
 
                 <a
@@ -176,8 +197,10 @@
                         client_name=client.client
                     ) }}"
                 >
-                    {% if client.status == "Mismatch" %}
+                    {% if client.tool_display_status == "Mismatch" %}
                         Investigate
+                    {% elif client.tool_display_status == "Triaging" %}
+                        Review
                     {% else %}
                         View
                     {% endif %}

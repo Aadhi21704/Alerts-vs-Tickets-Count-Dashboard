@@ -26,6 +26,15 @@
         if tool.tool_key == "securonix"
         else "Alerts"
     %}
+    {% set source_evidence = client.get(
+        "source_evidence",
+        client.get("wazuh_source_evidence", alerts)
+    ) %}
+    {% set is_wazuh = tool.tool_key == "wazuh" %}
+    {% set display_status = client.get(
+        "coverage_display_status",
+        client.status
+    ) %}
 
     <nav class="page-navigation" aria-label="Breadcrumb">
         <a href="/">Dashboard</a>
@@ -43,9 +52,9 @@
     </nav>
 
     <section class="page-hero
-        {% if client.status == 'Equal' %}
+        {% if display_status in ['Equal', 'Covered'] %}
             page-hero--equal
-        {% elif client.status == 'Covered with Warning' %}
+        {% elif display_status == 'Triage Review' %}
             page-hero--warning
         {% else %}
             page-hero--mismatch
@@ -66,18 +75,63 @@
                 </p>
             </div>
             <span class="status-badge
-                {% if client.status == 'Equal' %}
+                {% if display_status in ['Equal', 'Covered'] %}
                     status-badge--equal
-                {% elif client.status == 'Covered with Warning' %}
+                {% elif display_status == 'Triage Review' %}
                     status-badge--warning
                 {% else %}
                     status-badge--mismatch
                 {% endif %}
             ">
-                {{ client.status }}
+                {{ display_status }}
             </span>
         </div>
 
+        {% if is_wazuh and client.correlated_ticket_count is defined %}
+        <div class="coverage-insight">
+            <div>
+                <span>Coverage</span>
+                <strong>
+                    {{ client.correlated_ticket_count | default(0) }}
+                    /
+                    {{ client.alert_count | default(0) }}
+                    tickets found
+                </strong>
+            </div>
+            <div>
+                <span>Delta</span>
+                <strong>
+                    {{ client.coverage_delta_display | default("0") }}
+                </strong>
+            </div>
+        </div>
+
+        <div class="insight-chip-row">
+            {% if client.missing_ticket_count | default(0) > 0 %}
+            <span class="insight-chip insight-chip--danger">
+                {{ client.missing_ticket_count }} missing Jira tickets
+            </span>
+            {% endif %}
+            {% if client.extra_ticket_count | default(0) > 0 %}
+            <span class="insight-chip insight-chip--warning">
+                {{ client.extra_ticket_count }} extra Jira tickets found
+            </span>
+            <span class="insight-helper">
+                Verify triage, escalation, duplicate, or stale-ticket behavior.
+            </span>
+            {% endif %}
+            {% if (
+                client.metadata_drift_count | default(0) > 0
+                and
+                display_status == "Covered"
+            ) %}
+            <span class="insight-chip insight-chip--muted">
+                {{ client.metadata_drift_count }}
+                tickets resolved using source evidence
+            </span>
+            {% endif %}
+        </div>
+        {% else %}
         <div class="page-hero__metrics page-hero__metrics--client">
             <div>
                 <span>{{ source_label }}</span>
@@ -92,38 +146,8 @@
                 <strong>{{ client.delta_display }}</strong>
             </div>
         </div>
+        {% endif %}
     </section>
-
-    {% if client.strict_ticket_count is defined %}
-    <section class="correlation-details">
-        <div class="section-heading">
-            <div>
-                <p class="dashboard-eyebrow">
-                    Wazuh Correlation
-                </p>
-                <h2>Correlation Details</h2>
-            </div>
-        </div>
-        <div class="correlation-summary correlation-summary--standalone">
-            <div>
-                <span>Strict Tickets</span>
-                <strong>{{ client.strict_ticket_count | default(0) }}</strong>
-            </div>
-            <div>
-                <span>Correlated Tickets</span>
-                <strong>{{ client.correlated_ticket_count | default(0) }}</strong>
-            </div>
-            <div>
-                <span>Metadata Drift</span>
-                <strong>{{ client.metadata_drift_count | default(0) }}</strong>
-            </div>
-            <div>
-                <span>Unmapped Tickets</span>
-                <strong>{{ tool.unmapped_ticket_count | default(0) }}</strong>
-            </div>
-        </div>
-    </section>
-    {% endif %}
 
     <section class="investigation-grid">
         <article class="evidence-panel">
@@ -132,17 +156,38 @@
                     <p class="dashboard-eyebrow">
                         Source Evidence
                     </p>
-                    <h2>{{ evidence_label }}</h2>
+                    <h2>
+                        {% if is_wazuh %}
+                            Wazuh Rule Evidence
+                        {% else %}
+                            {{ evidence_label }}
+                        {% endif %}
+                    </h2>
                 </div>
                 <span class="evidence-count">
-                    {{ alerts | length }}
+                    {{ source_evidence | length }}
                 </span>
             </div>
 
-            {% if alerts %}
-            <ul class="identifier-list">
-                {% for alert in alerts %}
+            {% if source_evidence %}
+            <ul class="identifier-list evidence-list--compact">
+                {% for alert in source_evidence %}
                 <li>
+                    {% if is_wazuh %}
+                    <div class="evidence-row-heading">
+                        <code>Rule {{ alert.rule_id | default("-") }}</code>
+                        <span>Count {{ alert.count | default(0) }}</span>
+                    </div>
+                    <span>
+                        Sample Alert ID:
+                        {{ alert.sample_alert_id | default("-") }}
+                    </span>
+                    <span>Level: {{ alert.level | default("-") }}</span>
+                    <span>Location: {{ alert.location | default("-") }}</span>
+                    <p class="evidence-description">
+                        {{ alert.description | default("-") }}
+                    </p>
+                    {% else %}
                     <code>{{ alert.id }}</code>
                     {% if tool.tool_key == "securonix" %}
                         {% if alert.status %}
@@ -162,18 +207,15 @@
                             </a>
                         {% endif %}
                     {% endif %}
+                    {% endif %}
                 </li>
                 {% endfor %}
             </ul>
             {% else %}
-            <div class="evidence-empty
-                {% if tool.tool_key == 'wazuh' %}
-                    evidence-empty--warning
-                {% endif %}
-            ">
+            <div class="evidence-empty">
                 {% if tool.tool_key == "wazuh" %}
-                    Wazuh alert IDs are not available from the
-                    WHB API yet.
+                    No Wazuh grouped source evidence is available for
+                    this client.
                 {% elif tool.tool_key == "securonix" %}
                     No incident IDs available for this source.
                 {% else %}
@@ -211,10 +253,17 @@
                     {% if ticket.rule_id %}
                     <span>Rule: {{ ticket.rule_id }}</span>
                     {% endif %}
+                    {% if ticket.wazuh_alert_id %}
+                    <span>Wazuh Alert ID: {{ ticket.wazuh_alert_id }}</span>
+                    {% endif %}
                     {% if ticket.status %}
                     <span>Status: {{ ticket.status }}</span>
                     {% endif %}
-                    {% if ticket.client_resolution_source %}
+                    {% if (
+                        ticket.client_resolution_source
+                        and
+                        ticket.client_resolution_source != "tenant_field"
+                    ) %}
                     <span>Resolution: {{ ticket.client_resolution_source }}</span>
                     {% endif %}
                     {% if ticket.metadata_issues %}

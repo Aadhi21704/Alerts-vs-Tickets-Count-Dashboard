@@ -96,12 +96,14 @@ def build_tool_context(tool):
     mismatch_count = sum(
         1
         for client in clients
-        if client.get("status") == "Mismatch"
+        if client.get("tool_display_status", client.get("status"))
+        == "Mismatch"
     )
     warning_count = sum(
         1
         for client in clients
-        if client.get("status") == "Covered with Warning"
+        if client.get("tool_display_status", client.get("status"))
+        == "Triaging"
     )
 
     alert_count = tool.get(
@@ -125,6 +127,35 @@ def build_tool_context(tool):
         )
     )
     delta = alert_count - ticket_count
+    coverage_delta = tool.get(
+        "coverage_delta_total",
+        ticket_count - alert_count
+    )
+    extra_ticket_total = tool.get(
+        "extra_ticket_total",
+        max(coverage_delta, 0)
+    )
+    missing_ticket_total = tool.get(
+        "missing_ticket_total",
+        max(-coverage_delta, 0)
+    )
+
+    if extra_ticket_total:
+        delta_display = f"{extra_ticket_total} extra tickets"
+    elif "coverage_delta_total" in tool:
+        delta_display = str(coverage_delta)
+    else:
+        delta_display = f"{delta:+d}"
+
+    tool_display_status = (
+        "Mismatch"
+        if mismatch_count
+        else (
+            "Triaging"
+            if warning_count
+            else "Equal"
+        )
+    )
 
     return {
         **tool,
@@ -132,19 +163,16 @@ def build_tool_context(tool):
         "alert_count": alert_count,
         "ticket_count": ticket_count,
         "delta": delta,
-        "delta_display": f"{delta:+d}",
+        "delta_display": delta_display,
+        "coverage_delta": coverage_delta,
+        "missing_ticket_total": missing_ticket_total,
+        "extra_ticket_total": extra_ticket_total,
         "client_count": len(clients),
         "mismatch_count": mismatch_count,
         "warning_count": warning_count,
-        "status": (
-            "Mismatch"
-            if mismatch_count
-            else (
-                "Covered with Warning"
-                if warning_count
-                else "Equal"
-            )
-        )
+        "review_count": mismatch_count + warning_count,
+        "tool_display_status": tool_display_status,
+        "status": tool_display_status
     }
 
 
@@ -179,6 +207,67 @@ def build_client_context(client):
         )
     )
     delta = alert_count - ticket_count
+    coverage_delta = client.get(
+        "coverage_delta",
+        ticket_count - alert_count
+    )
+    extra_ticket_count = client.get(
+        "extra_ticket_count",
+        max(coverage_delta, 0)
+    )
+    missing_ticket_count = client.get(
+        "missing_ticket_count",
+        max(-coverage_delta, 0)
+    )
+    coverage_status = client.get(
+        "coverage_status",
+        client.get(
+            "status",
+            (
+                "Equal"
+                if alert_count == ticket_count
+                else "Mismatch"
+            )
+        )
+    )
+    display_status = coverage_status
+
+    if coverage_status == "Extra Tickets - Review":
+        display_status = "Triage Review"
+
+    if extra_ticket_count:
+        coverage_delta_display = (
+            f"{extra_ticket_count} extra tickets"
+        )
+    else:
+        coverage_delta_display = str(
+            coverage_delta
+        )
+
+    tool_display_status = client.get(
+        "status",
+        (
+            "Equal"
+            if alert_count == ticket_count
+            else "Mismatch"
+        )
+    )
+
+    if (
+        missing_ticket_count > 0
+        or coverage_status == "Missing Tickets"
+    ):
+        tool_display_status = "Mismatch"
+    elif (
+        extra_ticket_count > 0
+        or coverage_status == "Extra Tickets - Review"
+    ):
+        tool_display_status = "Triaging"
+    elif (
+        coverage_status == "Covered"
+        and alert_count == ticket_count
+    ):
+        tool_display_status = "Equal"
 
     return {
         **client,
@@ -186,6 +275,12 @@ def build_client_context(client):
         "ticket_count": ticket_count,
         "delta": delta,
         "delta_display": f"{delta:+d}",
+        "coverage_delta": coverage_delta,
+        "coverage_delta_display": coverage_delta_display,
+        "coverage_display_status": display_status,
+        "tool_display_status": tool_display_status,
+        "missing_ticket_count": missing_ticket_count,
+        "extra_ticket_count": extra_ticket_count,
         "display_tickets": (
             list(reversed(tickets))
             if alerts and tickets
@@ -262,7 +357,7 @@ def dashboard(request: Request):
 
         for client in tool["clients"]:
 
-            if client.get("status") != "Mismatch":
+            if client.get("tool_display_status") != "Mismatch":
                 continue
 
             tool_has_mismatch = True

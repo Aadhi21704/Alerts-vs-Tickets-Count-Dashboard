@@ -747,6 +747,85 @@ body {
     font-size: 1.45rem;
 }
 
+.coverage-insight {
+    border-top: 1px solid #25364d;
+    display: grid;
+    gap: 16px;
+    grid-template-columns:
+        minmax(0, 2fr)
+        minmax(150px, 0.7fr);
+    margin-top: 22px;
+    padding-top: 20px;
+}
+
+.coverage-insight span,
+.insight-chip {
+    font-size: 0.72rem;
+    font-weight: 800;
+    letter-spacing: 0.07em;
+    text-transform: uppercase;
+}
+
+.coverage-insight span {
+    color: #8ea2bd;
+    display: block;
+    margin-bottom: 6px;
+}
+
+.coverage-insight strong {
+    color: #f8fafc;
+    display: block;
+    font-size: clamp(1.45rem, 4vw, 2.15rem);
+    line-height: 1.1;
+}
+
+.insight-chip-row {
+    align-items: center;
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    margin-top: 14px;
+}
+
+.insight-chip {
+    border: 1px solid;
+    border-radius: 999px;
+    padding: 6px 9px;
+}
+
+.insight-chip--danger {
+    background: rgba(239, 68, 68, 0.11);
+    border-color: rgba(239, 68, 68, 0.45);
+    color: #fca5a5;
+}
+
+.insight-chip--warning {
+    background: rgba(245, 158, 11, 0.11);
+    border-color: rgba(245, 158, 11, 0.45);
+    color: #fbbf24;
+}
+
+.insight-chip--muted {
+    background: rgba(96, 165, 250, 0.1);
+    border-color: rgba(96, 165, 250, 0.3);
+    color: #b9d4f7;
+}
+
+.insight-helper {
+    color: #9fb0c5;
+    font-size: 0.84rem;
+}
+
+.tool-diagnostic-strip {
+    align-items: center;
+    border-top: 1px solid #25364d;
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    margin-top: 18px;
+    padding-top: 18px;
+}
+
 .correlation-summary {
     border-top: 1px solid #25364d;
     display: grid;
@@ -876,7 +955,7 @@ body {
 
 .row-metrics--wazuh {
     grid-template-columns:
-        repeat(4, minmax(0, 1fr));
+        repeat(3, minmax(0, 1fr));
 }
 
 .row-metrics strong {
@@ -948,6 +1027,30 @@ body {
     padding: 11px 12px;
 }
 
+.evidence-list--compact {
+    gap: 10px;
+}
+
+.evidence-row-heading {
+    align-items: baseline;
+    display: flex;
+    gap: 10px;
+    justify-content: space-between;
+}
+
+.evidence-row-heading span {
+    background: #172a45;
+    border: 1px solid #31527c;
+    border-radius: 999px;
+    color: #b9d4f7;
+    flex-shrink: 0;
+    font-size: 0.7rem;
+    font-weight: 800;
+    margin-top: 0;
+    padding: 4px 7px;
+    text-transform: uppercase;
+}
+
 .identifier-list code {
     color: #dce8f7;
     font-family:
@@ -955,6 +1058,13 @@ body {
         "Courier New",
         monospace;
     overflow-wrap: anywhere;
+}
+
+.evidence-description {
+    color: #dce8f7;
+    font-size: 0.88rem;
+    line-height: 1.45;
+    margin: 9px 0 0;
 }
 
 .identifier-list li > span {
@@ -1044,7 +1154,8 @@ body {
 @media (max-width: 700px) {
     .page-hero__metrics,
     .page-hero__metrics--client,
-    .correlation-summary {
+    .correlation-summary,
+    .coverage-insight {
         grid-template-columns:
             repeat(2, minmax(0, 1fr));
     }
@@ -1090,7 +1201,8 @@ body {
 
     .page-hero__metrics,
     .page-hero__metrics--client,
-    .correlation-summary {
+    .correlation-summary,
+    .coverage-insight {
         grid-template-columns:
             repeat(2, minmax(0, 1fr));
     }
@@ -1110,5 +1222,14 @@ body {
     .row-metrics--wazuh {
         grid-template-columns:
             repeat(3, minmax(0, 1fr));
+    }
+
+    .coverage-insight {
+        grid-template-columns: 1fr;
+    }
+
+    .evidence-row-heading {
+        align-items: flex-start;
+        flex-direction: column;
     }
 }
