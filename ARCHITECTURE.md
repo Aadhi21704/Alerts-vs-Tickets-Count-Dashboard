@@ -254,8 +254,51 @@ Comparator
 Dashboard
 
 Wazuh Jira tickets and client drilldowns are included in the canonical
-dashboard schema. Wazuh alert IDs are not currently available from the WHB
-API.
+dashboard schema.
+
+### Wazuh Coverage and Correlation Semantics
+
+Wazuh is currently the only tool using the correlation resilience flow. It is
+the first reference implementation of a future SOC pattern that can be
+extended to other tools later. SentinelOne and Securonix behavior is unchanged
+for now.
+
+Coverage is the primary Wazuh signal:
+
+* Source alert counts from WHB are compared against correlated Jira tickets.
+* Correlated Jira tickets are resolved by safe tenant-field evidence or by
+  configured Wazuh Jira client hints.
+* Strict tenant-field ticket counts are tracked separately as metadata quality
+  evidence.
+* Metadata drift is secondary. A Jira ticket resolved from source evidence
+  because the Tenant Name field is missing is still coverage, not a coverage
+  failure.
+
+Wazuh statuses:
+
+* Equal / Covered means source alert coverage is complete.
+* Mismatch / Missing Tickets means source alerts exist without matching Jira
+  coverage.
+* Triaging / Extra Tickets means Jira tickets exceed source alerts and should
+  be reviewed for triage, escalation, duplicate, or stale-ticket behavior.
+
+Wazuh delta semantics:
+
+* `0` means coverage is equal.
+* Negative values mean tickets are missing, for example `-2`.
+* The UI must not display `+0` or `+x`.
+* Extra tickets should be communicated as `x extra tickets`, not as a positive
+  signed delta.
+
+Wazuh source evidence:
+
+* WHB `by_rule[].id` is stored as `sample_alert_id`.
+* `sample_alert_id` is representative grouped evidence from a WHB rule row. It
+  is not necessarily every individual alert ID when `count > 1`.
+* Safe evidence fields include sample alert ID, rule ID, count, level,
+  location, and description.
+* Raw `full_log`, `data`, and other raw payloads must not be stored in
+  dashboard output or displayed.
 
 ---
 

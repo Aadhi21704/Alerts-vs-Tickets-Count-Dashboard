@@ -24,6 +24,9 @@
 * [x] Wazuh Jira integration
 * [x] Wazuh comparator integration
 * [x] Wazuh dashboard integration
+* [x] Wazuh Jira correlation resilience
+* [x] Wazuh coverage-first status semantics
+* [x] Wazuh grouped WHB source evidence display model
 * [x] Securonix collector integration
 * [x] Securonix Jira integration
 * [x] Securonix comparator integration
@@ -119,13 +122,42 @@ Integrate Wazuh into the existing comparison workflow.
 
 Requirements:
 
-* Reuse existing comparison behavior
+* Compare WHB source alert counts against correlated Jira tickets
+* Preserve strict tenant-field ticket counts separately
+* Treat metadata drift as secondary evidence, not as a coverage failure
 * Reuse managed client framework where applicable
 * Preserve tool-agnostic architecture
 
 Status:
 
 Completed
+
+---
+
+### Wazuh Correlation Resilience
+
+Wazuh is the first implementation of the coverage-first SOC pattern.
+SentinelOne and Securonix do not yet use this correlation resilience flow.
+
+Implemented behavior:
+
+* Correlated Wazuh Jira tickets count as coverage when resolved safely by
+  Tenant Name or configured source-evidence hints.
+* Strict Tenant Name counts remain visible as metadata quality evidence.
+* Metadata drift does not turn complete coverage into a failure.
+* Missing tickets are represented as negative coverage deltas, for example
+  `-2`.
+* Equal coverage displays `0`, not `+0`.
+* Extra tickets are communicated as `x extra tickets` and should be reviewed
+  for triage, escalation, duplicates, or stale-ticket behavior.
+* WHB grouped `by_rule[].id` is exposed as `sample_alert_id`.
+* `sample_alert_id` is representative grouped evidence and not every
+  individual alert ID when the row count is greater than 1.
+* Raw `full_log`, `data`, and other raw payloads must not be stored or shown.
+
+Status:
+
+Completed for Wazuh only
 
 ---
 
@@ -247,6 +279,8 @@ Requirements:
 
 * No vendor-specific branching
 * Reusable across all tools
+* Evaluate whether the Wazuh coverage/correlation model should become the
+  generic SOC pattern for additional tools
 
 Status:
 

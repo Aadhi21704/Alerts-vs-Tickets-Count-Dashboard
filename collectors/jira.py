@@ -423,13 +423,6 @@ def fetch_jira_tickets(
         if client == "Unknown":
             continue
         
-        if "Greenko" in client:
-            print(
-                issue["key"],
-                "=>",
-                client
-            )
-
         tickets.append(
             {
                 "key": issue["key"],

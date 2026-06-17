@@ -173,6 +173,17 @@ Responsibilities:
 * Apply allowlists
 * Apply mappings
 * Normalize records
+* Preserve safe grouped WHB `by_rule[]` evidence for managed clients
+
+Wazuh source evidence:
+
+* `by_rule[].id` is exposed as `sample_alert_id`
+* `sample_alert_id` is representative grouped evidence and must not be treated
+  as every individual alert ID when the grouped rule `count` is greater than 1
+* Safe fields are sample alert ID, rule ID, count, level, location, and
+  description
+* Raw `full_log`, `data`, or raw payload fields must not be stored in dashboard
+  output
 
 Status:
 
@@ -246,12 +257,30 @@ Current responsibilities:
 * Source aggregation
 * Exact SentinelOne alias normalization before grouping
 * Raw Securonix incident-list comparison
+* Wazuh coverage-first correlation comparison
 
 `compare_data()` accepts the configured SentinelOne client mapping. It applies
 the same exact mapping to alert and Jira records before grouping them under a
 canonical client name.
 
 Collectors do not own or duplicate this alias mapping.
+
+Wazuh is currently the only tool using the correlation resilience flow. Its
+comparison uses source alert counts and correlated Jira tickets as the primary
+coverage signal. Strict tenant-field ticket counts and metadata drift are
+retained as secondary evidence. SentinelOne and Securonix comparison behavior
+is unchanged for now.
+
+Wazuh statuses use SOC coverage language:
+
+* Covered / Equal: alert coverage is complete
+* Missing Tickets / Mismatch: source alerts lack Jira coverage
+* Extra Tickets / Triaging: Jira has more tickets than source alerts and needs
+  triage, escalation, duplicate, or stale-ticket review
+
+Wazuh coverage deltas are `correlated_ticket_count - alert_count`. Equal
+coverage is `0`, missing tickets are negative values, and extra tickets are
+reported separately as `extra_ticket_count` rather than as `+x` wording.
 
 Future goal:
 
@@ -384,6 +413,11 @@ Displays:
 * Alert IDs
 * Jira Ticket IDs
 * Display-only evidence alignment
+
+For Wazuh only, the client page presents coverage-first insight and compact
+grouped source evidence from WHB. This is a UI implementation of the Wazuh
+correlation pattern and does not imply SentinelOne or Securonix use the same
+correlation resilience flow yet.
 
 ---
 
