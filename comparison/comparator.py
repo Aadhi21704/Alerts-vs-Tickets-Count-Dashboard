@@ -289,17 +289,16 @@ def _safe_wazuh_ticket(ticket):
 
 def _wazuh_status(
     alert_count,
-    correlated_ticket_count,
-    metadata_drift_count
+    correlated_ticket_count
 ):
 
-    if alert_count != correlated_ticket_count:
-        return "Mismatch"
+    if correlated_ticket_count < alert_count:
+        return "Missing Tickets"
 
-    if metadata_drift_count > 0:
-        return "Covered with Warning"
+    if correlated_ticket_count > alert_count:
+        return "Extra Tickets - Review"
 
-    return "Equal"
+    return "Covered"
 
 
 def compare_wazuh_correlation_data(
@@ -468,6 +467,28 @@ def compare_wazuh_correlation_data(
             if ticket.get("metadata_issues")
         )
 
+        coverage_delta = (
+            correlated_ticket_count
+            - client["alert_count"]
+        )
+
+        missing_ticket_count = max(
+            client["alert_count"]
+            - correlated_ticket_count,
+            0
+        )
+
+        extra_ticket_count = max(
+            correlated_ticket_count
+            - client["alert_count"],
+            0
+        )
+
+        coverage_status = _wazuh_status(
+            client["alert_count"],
+            correlated_ticket_count
+        )
+
         result.append({
             "client": client["client"],
             "sources": sorted(
@@ -481,14 +502,18 @@ def compare_wazuh_correlation_data(
                 correlated_ticket_count,
             "metadata_drift_count":
                 metadata_drift_count,
+            "coverage_status":
+                coverage_status,
+            "coverage_delta":
+                coverage_delta,
+            "missing_ticket_count":
+                missing_ticket_count,
+            "extra_ticket_count":
+                extra_ticket_count,
             "ticket_count":
                 correlated_ticket_count,
             "status":
-                _wazuh_status(
-                    client["alert_count"],
-                    correlated_ticket_count,
-                    metadata_drift_count
-                ),
+                coverage_status,
             "alerts":
                 client["alerts"],
             "tickets":
@@ -519,12 +544,29 @@ def compare_wazuh_correlation_data(
         for client in result
     )
 
+    total_alert_count = sum(
+        client["alert_count"]
+        for client in result
+    )
+
+    coverage_delta_total = (
+        correlated_total_tickets
+        - total_alert_count
+    )
+
+    missing_ticket_total = sum(
+        client["missing_ticket_count"]
+        for client in result
+    )
+
+    extra_ticket_total = sum(
+        client["extra_ticket_count"]
+        for client in result
+    )
+
     return {
         "total_alerts":
-            sum(
-                record["count"]
-                for record in alert_counts
-            ),
+            total_alert_count,
 
         "total_tickets":
             correlated_total_tickets,
@@ -537,6 +579,15 @@ def compare_wazuh_correlation_data(
 
         "metadata_drift_total":
             metadata_drift_total,
+
+        "coverage_delta_total":
+            coverage_delta_total,
+
+        "missing_ticket_total":
+            missing_ticket_total,
+
+        "extra_ticket_total":
+            extra_ticket_total,
 
         "unmapped_ticket_count":
             len(unmapped_tickets),
