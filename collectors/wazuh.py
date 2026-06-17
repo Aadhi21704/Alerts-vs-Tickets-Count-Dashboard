@@ -11,6 +11,44 @@ from config import (
 )
 
 
+def _safe_wazuh_by_rule_evidence(rule_row):
+
+    if not isinstance(rule_row, dict):
+        return None
+
+    return {
+        # WHB by_rule is grouped; this is a representative alert id sample.
+        "sample_alert_id": str(
+            rule_row.get(
+                "id",
+                ""
+            )
+        ),
+        "rule_id": str(
+            rule_row.get(
+                "rule_id",
+                ""
+            )
+        ),
+        "count": rule_row.get(
+            "count",
+            0
+        ),
+        "level": rule_row.get(
+            "level",
+            ""
+        ),
+        "location": rule_row.get(
+            "location",
+            ""
+        ),
+        "description": rule_row.get(
+            "description",
+            ""
+        )
+    }
+
+
 def fetch_wazuh_alerts(api_key):
 
     if not isinstance(api_key, str):
@@ -79,7 +117,7 @@ def fetch_wazuh_alerts(api_key):
         WAZUH_ALLOWED_CLIENTS
     )
 
-    client_counts = {}
+    client_records = {}
 
     for row in rows:
 
@@ -132,19 +170,57 @@ def fetch_wazuh_alerts(api_key):
             raw_client
         ).strip()
 
-        client_counts[client] = (
-            client_counts.get(client, 0)
-            + total_count
+        if client not in client_records:
+            client_records[client] = {
+                "count": 0,
+                "wazuh_source_evidence": []
+            }
+
+        client_records[client]["count"] += (
+            total_count
         )
+
+        by_rule = row.get(
+            "by_rule",
+            []
+        )
+
+        if not isinstance(by_rule, list):
+            raise ValueError(
+                "Invalid Wazuh by_rule response for "
+                f"{raw_client}"
+            )
+
+        for rule_row in by_rule:
+
+            evidence = _safe_wazuh_by_rule_evidence(
+                rule_row
+            )
+
+            if evidence is None:
+                raise ValueError(
+                    "Invalid Wazuh by_rule row for "
+                    f"{raw_client}"
+                )
+
+            client_records[client][
+                "wazuh_source_evidence"
+            ].append(
+                evidence
+            )
 
     return [
         {
             "tool": "Wazuh",
             "client": client,
-            "count": count,
-            "alerts": [],
+            "count": record["count"],
+            "alerts": record[
+                "wazuh_source_evidence"
+            ],
+            "wazuh_source_evidence":
+                record["wazuh_source_evidence"],
             "source": "wazuh"
         }
-        for client, count
-        in sorted(client_counts.items())
+        for client, record
+        in sorted(client_records.items())
     ]

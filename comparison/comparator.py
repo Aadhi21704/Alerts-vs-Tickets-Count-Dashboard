@@ -334,6 +334,7 @@ def compare_wazuh_correlation_data(
                 "sources": set(),
                 "alert_count": 0,
                 "alerts": [],
+                "wazuh_source_evidence": [],
                 "strict_tickets": [],
                 "correlated_tickets": []
             }
@@ -356,6 +357,16 @@ def compare_wazuh_correlation_data(
             )
         )
 
+        clients[client]["wazuh_source_evidence"].extend(
+            record.get(
+                "wazuh_source_evidence",
+                record.get(
+                    "source_evidence",
+                    []
+                )
+            )
+        )
+
     for client in managed_client_set:
 
         if client not in clients:
@@ -364,6 +375,7 @@ def compare_wazuh_correlation_data(
                 "sources": {source},
                 "alert_count": 0,
                 "alerts": [],
+                "wazuh_source_evidence": [],
                 "strict_tickets": [],
                 "correlated_tickets": []
             }
@@ -416,6 +428,7 @@ def compare_wazuh_correlation_data(
                     "sources": {source},
                     "alert_count": 0,
                     "alerts": [],
+                    "wazuh_source_evidence": [],
                     "strict_tickets": [],
                     "correlated_tickets": []
                 }
@@ -439,6 +452,7 @@ def compare_wazuh_correlation_data(
                     "sources": {source},
                     "alert_count": 0,
                     "alerts": [],
+                    "wazuh_source_evidence": [],
                     "strict_tickets": [],
                     "correlated_tickets": []
                 }
@@ -516,6 +530,10 @@ def compare_wazuh_correlation_data(
                 coverage_status,
             "alerts":
                 client["alerts"],
+            "source_evidence":
+                client["wazuh_source_evidence"],
+            "wazuh_source_evidence":
+                client["wazuh_source_evidence"],
             "tickets":
                 client["correlated_tickets"],
             "strict_tickets":
