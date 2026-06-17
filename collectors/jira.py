@@ -309,7 +309,7 @@ def _fetch_jira_issues(
     jql,
     fields,
     max_pages=None,
-    log_pages=True
+    log_pages=False
 ):
 
     url = JIRA_URL

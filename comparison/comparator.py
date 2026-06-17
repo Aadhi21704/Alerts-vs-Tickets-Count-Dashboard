@@ -236,6 +236,319 @@ def compare_count_data(
     }
 
 
+def _safe_wazuh_ticket(ticket):
+
+    jira_key = ticket.get(
+        "jira_key",
+        ticket.get(
+            "key",
+            ""
+        )
+    )
+
+    return {
+        "key": jira_key,
+        "jira_key": jira_key,
+        "created": ticket.get(
+            "created",
+            ""
+        ),
+        "summary": ticket.get(
+            "summary",
+            ""
+        ),
+        "status": ticket.get(
+            "status",
+            ""
+        ),
+        "wazuh_alert_id": ticket.get(
+            "wazuh_alert_id",
+            ""
+        ),
+        "rule_id": ticket.get(
+            "rule_id",
+            ""
+        ),
+        "resolved_client": ticket.get(
+            "resolved_client"
+        ),
+        "client_resolution_source": ticket.get(
+            "client_resolution_source",
+            ""
+        ),
+        "confidence": ticket.get(
+            "confidence",
+            ""
+        ),
+        "metadata_issues": ticket.get(
+            "metadata_issues",
+            []
+        )
+    }
+
+
+def _wazuh_status(
+    alert_count,
+    correlated_ticket_count,
+    metadata_drift_count
+):
+
+    if alert_count != correlated_ticket_count:
+        return "Mismatch"
+
+    if metadata_drift_count > 0:
+        return "Covered with Warning"
+
+    return "Equal"
+
+
+def compare_wazuh_correlation_data(
+    alert_counts,
+    jira_tickets,
+    source="wazuh",
+    managed_clients=None
+):
+
+    clients = {}
+    unmapped_tickets = []
+    managed_client_set = {
+        client.strip()
+        for client in (
+            managed_clients or []
+        )
+        if client and client.strip()
+    }
+
+    for record in alert_counts:
+
+        client = record.get(
+            "client",
+            "Unknown"
+        ).strip()
+
+        if managed_client_set and client not in managed_client_set:
+            continue
+
+        if client not in clients:
+            clients[client] = {
+                "client": client,
+                "sources": set(),
+                "alert_count": 0,
+                "alerts": [],
+                "strict_tickets": [],
+                "correlated_tickets": []
+            }
+
+        clients[client]["sources"].add(
+            record.get(
+                "source",
+                source
+            )
+        )
+
+        clients[client]["alert_count"] += (
+            record["count"]
+        )
+
+        clients[client]["alerts"].extend(
+            record.get(
+                "alerts",
+                []
+            )
+        )
+
+    for client in managed_client_set:
+
+        if client not in clients:
+            clients[client] = {
+                "client": client,
+                "sources": {source},
+                "alert_count": 0,
+                "alerts": [],
+                "strict_tickets": [],
+                "correlated_tickets": []
+            }
+
+    for ticket in jira_tickets:
+
+        safe_ticket = _safe_wazuh_ticket(
+            ticket
+        )
+
+        resolved_client = ticket.get(
+            "resolved_client"
+        )
+
+        tenant_clients = [
+            tenant_client.strip()
+            for tenant_client in ticket.get(
+                "tenant_field",
+                []
+            )
+            if tenant_client and tenant_client.strip()
+        ]
+
+        managed_tenant_clients = [
+            tenant_client
+            for tenant_client in tenant_clients
+            if (
+                not managed_client_set
+                or tenant_client in managed_client_set
+            )
+        ]
+
+        is_high_confidence = (
+            ticket.get("confidence") == "high"
+        )
+
+        if (
+            resolved_client
+            and
+            is_high_confidence
+            and (
+                not managed_client_set
+                or resolved_client in managed_client_set
+            )
+        ):
+
+            if resolved_client not in clients:
+                clients[resolved_client] = {
+                    "client": resolved_client,
+                    "sources": {source},
+                    "alert_count": 0,
+                    "alerts": [],
+                    "strict_tickets": [],
+                    "correlated_tickets": []
+                }
+
+            clients[resolved_client][
+                "correlated_tickets"
+            ].append(
+                safe_ticket
+            )
+
+        elif managed_tenant_clients:
+
+            unmapped_tickets.append(
+                safe_ticket
+            )
+
+        for tenant_client in managed_tenant_clients:
+            if tenant_client not in clients:
+                clients[tenant_client] = {
+                    "client": tenant_client,
+                    "sources": {source},
+                    "alert_count": 0,
+                    "alerts": [],
+                    "strict_tickets": [],
+                    "correlated_tickets": []
+                }
+
+            clients[tenant_client][
+                "strict_tickets"
+            ].append(
+                safe_ticket
+            )
+
+    result = []
+
+    for client in clients.values():
+
+        strict_ticket_count = len(
+            client["strict_tickets"]
+        )
+
+        correlated_ticket_count = len(
+            client["correlated_tickets"]
+        )
+
+        metadata_drift_count = sum(
+            1
+            for ticket in client["correlated_tickets"]
+            if ticket.get("metadata_issues")
+        )
+
+        result.append({
+            "client": client["client"],
+            "sources": sorted(
+                list(client["sources"])
+            ),
+            "alert_count":
+                client["alert_count"],
+            "strict_ticket_count":
+                strict_ticket_count,
+            "correlated_ticket_count":
+                correlated_ticket_count,
+            "metadata_drift_count":
+                metadata_drift_count,
+            "ticket_count":
+                correlated_ticket_count,
+            "status":
+                _wazuh_status(
+                    client["alert_count"],
+                    correlated_ticket_count,
+                    metadata_drift_count
+                ),
+            "alerts":
+                client["alerts"],
+            "tickets":
+                client["correlated_tickets"],
+            "strict_tickets":
+                client["strict_tickets"]
+        })
+
+    result.sort(
+        key=lambda client: (
+            client["status"] == "Equal",
+            client["client"].casefold()
+        )
+    )
+
+    correlated_total_tickets = sum(
+        len(client["correlated_tickets"])
+        for client in clients.values()
+    )
+
+    strict_total_tickets = sum(
+        len(client["strict_tickets"])
+        for client in clients.values()
+    )
+
+    metadata_drift_total = sum(
+        client["metadata_drift_count"]
+        for client in result
+    )
+
+    return {
+        "total_alerts":
+            sum(
+                record["count"]
+                for record in alert_counts
+            ),
+
+        "total_tickets":
+            correlated_total_tickets,
+
+        "strict_total_tickets":
+            strict_total_tickets,
+
+        "correlated_total_tickets":
+            correlated_total_tickets,
+
+        "metadata_drift_total":
+            metadata_drift_total,
+
+        "unmapped_ticket_count":
+            len(unmapped_tickets),
+
+        "unmapped_tickets":
+            unmapped_tickets,
+
+        "clients":
+            result
+    }
+
+
 def compare_list_data(
     records,
     jira_tickets,

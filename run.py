@@ -9,7 +9,8 @@ from logger import logger
 from config import (
     MANAGED_CLIENTS,
     SENTINELONE_CLIENT_MAPPING,
-    SENTINELONE_SOURCES
+    SENTINELONE_SOURCES,
+    WAZUH_CLIENT_MAPPING
 )
 
 from collectors.sentinelone import (
@@ -27,13 +28,13 @@ from collectors.securonix import (
 from collectors.jira import (
     fetch_jira_tickets,
     fetch_securonix_jira_tickets,
-    fetch_wazuh_jira_tickets
+    fetch_wazuh_jira_tickets_for_correlation
 )
 
 from comparison.comparator import (
-    compare_count_data,
     compare_data,
-    compare_list_data
+    compare_list_data,
+    compare_wazuh_correlation_data
 )
 
 urllib3.disable_warnings(
@@ -169,7 +170,7 @@ def main():
         )
 
         wazuh_jira_tickets = (
-            fetch_wazuh_jira_tickets(
+            fetch_wazuh_jira_tickets_for_correlation(
                 jira_email,
                 jira_token
             )
@@ -181,10 +182,15 @@ def main():
             f"tickets retrieved"
         )
 
-        wazuh_result = compare_count_data(
+        wazuh_result = compare_wazuh_correlation_data(
             wazuh_alert_counts,
             wazuh_jira_tickets,
-            source="wazuh"
+            source="wazuh",
+            managed_clients=sorted(
+                set(
+                    WAZUH_CLIENT_MAPPING.values()
+                )
+            )
         )
 
         securonix_base_url = os.getenv(
