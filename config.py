@@ -109,6 +109,20 @@ WAZUH_CLIENT_MAPPING = {
         "Rainbow_Children_Hospitals"
 }
 
+WAZUH_JIRA_CLIENT_HINTS = {
+    "Rainbow_Children_Hospitals": [
+        "Rainbow-NC-VCiso",
+        "RAINBOWHOSPITAL",
+        "RCH"
+    ],
+    "NCC-Bihar": [
+        "NCC"
+    ],
+    "Progility": [
+        "Progility"
+    ]
+}
+
 # JIRA
 JIRA_URL = (
     "https://nopalcyber.atlassian.net/rest/api/3/search/jql"
