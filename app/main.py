@@ -82,6 +82,23 @@ def build_tool_context(tool):
         build_client_context(client)
         for client in tool.get("clients", [])
     ]
+    has_correlation_ui = (
+        tool.get("tool_key") == "wazuh"
+    )
+
+    if not has_correlation_ui:
+        clients = [
+            {
+                key: value
+                for key, value in client.items()
+                if key not in {
+                    "strict_ticket_count",
+                    "correlated_ticket_count",
+                    "metadata_drift_count"
+                }
+            }
+            for client in clients
+        ]
 
     clients.sort(
         key=lambda client: (
@@ -157,7 +174,7 @@ def build_tool_context(tool):
         )
     )
 
-    return {
+    tool_context = {
         **tool,
         "clients": clients,
         "alert_count": alert_count,
@@ -174,6 +191,19 @@ def build_tool_context(tool):
         "tool_display_status": tool_display_status,
         "status": tool_display_status
     }
+
+    if not has_correlation_ui:
+        for key in (
+            "strict_total_tickets",
+            "correlated_total_tickets",
+            "metadata_drift_total"
+        ):
+            tool_context.pop(
+                key,
+                None
+            )
+
+    return tool_context
 
 
 def build_client_context(client):

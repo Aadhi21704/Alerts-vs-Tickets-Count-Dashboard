@@ -1,6 +1,106 @@
 from datetime import datetime, UTC
 
 
+def _coverage_status(
+    alert_count,
+    ticket_count
+):
+
+    if ticket_count < alert_count:
+        return "Missing Tickets"
+
+    if ticket_count > alert_count:
+        return "Extra Tickets - Review"
+
+    return "Covered"
+
+
+def _coverage_fields(
+    alert_count,
+    ticket_count,
+    strict_ticket_count=None,
+    correlated_ticket_count=None,
+    metadata_drift_count=0
+):
+
+    strict_ticket_count = (
+        ticket_count
+        if strict_ticket_count is None
+        else strict_ticket_count
+    )
+
+    correlated_ticket_count = (
+        ticket_count
+        if correlated_ticket_count is None
+        else correlated_ticket_count
+    )
+
+    coverage_delta = (
+        correlated_ticket_count
+        - alert_count
+    )
+
+    return {
+        "strict_ticket_count": strict_ticket_count,
+        "correlated_ticket_count": correlated_ticket_count,
+        "metadata_drift_count": metadata_drift_count,
+        "coverage_status":
+            _coverage_status(
+                alert_count,
+                correlated_ticket_count
+            ),
+        "coverage_delta": coverage_delta,
+        "missing_ticket_count":
+            max(
+                alert_count - correlated_ticket_count,
+                0
+            ),
+        "extra_ticket_count":
+            max(
+                correlated_ticket_count - alert_count,
+                0
+            )
+    }
+
+
+def _coverage_totals(
+    clients
+):
+
+    return {
+        "strict_total_tickets":
+            sum(
+                client.get("strict_ticket_count", 0)
+                for client in clients
+            ),
+        "correlated_total_tickets":
+            sum(
+                client.get("correlated_ticket_count", 0)
+                for client in clients
+            ),
+        "metadata_drift_total":
+            sum(
+                client.get("metadata_drift_count", 0)
+                for client in clients
+            ),
+        "coverage_delta_total":
+            sum(
+                client.get("coverage_delta", 0)
+                for client in clients
+            ),
+        "missing_ticket_total":
+            sum(
+                client.get("missing_ticket_count", 0)
+                for client in clients
+            ),
+        "extra_ticket_total":
+            sum(
+                client.get("extra_ticket_count", 0)
+                for client in clients
+            )
+    }
+
+
 def compare_data(
     sentinel_alerts,
     jira_tickets,
@@ -83,22 +183,30 @@ def compare_data(
 
     for client in clients.values():
 
+        alert_count = len(
+            client["sentinel_alerts"]
+        )
+
+        ticket_count = len(
+            client["jira_tickets"]
+        )
+
         result.append({
             "client": client["client"],
             "sources": sorted(
                 list(client["sources"])
             ),
-            "sentinel_count": len(
-                client["sentinel_alerts"]
-            ),
-            "jira_count": len(
-                client["jira_tickets"]
+            "sentinel_count": alert_count,
+            "jira_count": ticket_count,
+            "alert_count": alert_count,
+            "ticket_count": ticket_count,
+            **_coverage_fields(
+                alert_count,
+                ticket_count
             ),
             "status":
                 "Equal"
-                if len(client["sentinel_alerts"])
-                ==
-                len(client["jira_tickets"])
+                if alert_count == ticket_count
                 else
                 "Mismatch",
             "sentinel_alerts":
@@ -106,6 +214,10 @@ def compare_data(
             "jira_tickets":
                 client["jira_tickets"]
         })
+
+    coverage_totals = _coverage_totals(
+        result
+    )
 
     return {
         "timestamp":
@@ -116,6 +228,14 @@ def compare_data(
 
         "total_jira_count":
             len(jira_tickets),
+
+        "total_alerts":
+            len(sentinel_alerts),
+
+        "total_tickets":
+            len(jira_tickets),
+
+        **coverage_totals,
 
         "clients":
             result
@@ -202,6 +322,10 @@ def compare_count_data(
                 client["alert_count"],
             "ticket_count":
                 ticket_count,
+            **_coverage_fields(
+                client["alert_count"],
+                ticket_count
+            ),
             "status":
                 "Equal"
                 if client["alert_count"]
@@ -221,6 +345,10 @@ def compare_count_data(
         )
     )
 
+    coverage_totals = _coverage_totals(
+        result
+    )
+
     return {
         "total_alerts":
             sum(
@@ -230,6 +358,8 @@ def compare_count_data(
 
         "total_tickets":
             len(jira_tickets),
+
+        **coverage_totals,
 
         "clients":
             result
@@ -292,13 +422,10 @@ def _wazuh_status(
     correlated_ticket_count
 ):
 
-    if correlated_ticket_count < alert_count:
-        return "Missing Tickets"
-
-    if correlated_ticket_count > alert_count:
-        return "Extra Tickets - Review"
-
-    return "Covered"
+    return _coverage_status(
+        alert_count,
+        correlated_ticket_count
+    )
 
 
 def compare_wazuh_correlation_data(
@@ -708,6 +835,10 @@ def compare_list_data(
             ),
             "alert_count": alert_count,
             "ticket_count": ticket_count,
+            **_coverage_fields(
+                alert_count,
+                ticket_count
+            ),
             "status":
                 "Equal"
                 if alert_count == ticket_count
@@ -726,8 +857,13 @@ def compare_list_data(
         )
     )
 
+    coverage_totals = _coverage_totals(
+        result
+    )
+
     return {
         "total_alerts": len(records),
         "total_tickets": len(jira_tickets),
+        **coverage_totals,
         "clients": result
     }
