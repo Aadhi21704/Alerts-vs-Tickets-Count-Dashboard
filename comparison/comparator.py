@@ -101,6 +101,66 @@ def _coverage_totals(
     }
 
 
+def _normalized_identifier(value):
+    if value is None:
+        return ""
+
+    return str(value).strip().casefold()
+
+
+def _sentinelone_alert_identifiers(alert):
+    identifiers = []
+
+    for field_name in (
+        "id",
+        "sentinelone_source_id",
+        "sentinelone_threat_id",
+        "sentinelone_threat_url_id"
+    ):
+        identifier = _normalized_identifier(
+            alert.get(field_name)
+        )
+
+        if identifier:
+            identifiers.append(identifier)
+
+    return sorted(
+        set(identifiers)
+    )
+
+
+def _sentinelone_ticket_identifiers(ticket):
+    identifiers = []
+
+    for field_name in (
+        "sentinelone_threat_id",
+        "sentinelone_threat_url_id"
+    ):
+        identifier = _normalized_identifier(
+            ticket.get(field_name)
+        )
+
+        if identifier:
+            identifiers.append(identifier)
+
+    return sorted(
+        set(identifiers)
+    )
+
+
+def _sentinelone_status(
+    missing_ticket_count,
+    extra_ticket_count
+):
+    if missing_ticket_count > 0:
+        return "Missing Tickets"
+
+    if extra_ticket_count > 0:
+        return "Extra Tickets - Review"
+
+    return "Covered"
+
+
 def compare_data(
     sentinel_alerts,
     jira_tickets,
@@ -124,10 +184,14 @@ def compare_data(
             "client": client,
             "sources": set(sources),
             "sentinel_alerts": [],
-            "jira_tickets": []
+            "strict_tickets": [],
+            "correlated_tickets": [],
+            "matched_source_indexes": set()
         }
 
-    for alert in sentinel_alerts:
+    source_index = {}
+
+    for alert_index, alert in enumerate(sentinel_alerts):
 
         raw_client = alert.get(
             "client",
@@ -143,7 +207,9 @@ def compare_data(
                 "client": client,
                 "sources": set(),
                 "sentinel_alerts": [],
-                "jira_tickets": []
+                "strict_tickets": [],
+                "correlated_tickets": [],
+                "matched_source_indexes": set()
             }
 
         clients[client]["sources"].add(
@@ -154,6 +220,17 @@ def compare_data(
             **alert,
             "client": client
         })
+
+        for identifier in _sentinelone_alert_identifiers(
+            alert
+        ):
+            source_index[identifier] = {
+                "index": alert_index,
+                "client": client,
+                "alert": alert
+            }
+
+    unmapped_tickets = []
 
     for ticket in jira_tickets:
 
@@ -171,13 +248,95 @@ def compare_data(
                 "client": client,
                 "sources": set(),
                 "sentinel_alerts": [],
-                "jira_tickets": []
+                "strict_tickets": [],
+                "correlated_tickets": [],
+                "matched_source_indexes": set()
             }
 
-        clients[client]["jira_tickets"].append({
+        strict_ticket = {
             **ticket,
-            "client": client
-        })
+            "client": client,
+            "strict_client": client
+        }
+
+        clients[client]["strict_tickets"].append(
+            strict_ticket
+        )
+
+        matched_source = None
+
+        for identifier in _sentinelone_ticket_identifiers(
+            ticket
+        ):
+            if identifier in source_index:
+                matched_source = source_index[
+                    identifier
+                ]
+                break
+
+        if not matched_source:
+            if _sentinelone_ticket_identifiers(
+                ticket
+            ):
+                unmapped_tickets.append(
+                    {
+                        **strict_ticket,
+                        "match_status":
+                            "sentinelone_evidence_unmatched"
+                    }
+                )
+
+            continue
+
+        matched_client = matched_source[
+            "client"
+        ]
+
+        if matched_client not in clients:
+            clients[matched_client] = {
+                "client": matched_client,
+                "sources": set(),
+                "sentinel_alerts": [],
+                "strict_tickets": [],
+                "correlated_tickets": [],
+                "matched_source_indexes": set()
+            }
+
+        metadata_issues = list(
+            ticket.get(
+                "metadata_issues",
+                []
+            )
+            or []
+        )
+
+        if client != matched_client:
+            metadata_issues.append(
+                "client_metadata_drift"
+            )
+
+        correlated_ticket = {
+            **ticket,
+            "client": matched_client,
+            "strict_client": client,
+            "matched_source_client": matched_client,
+            "match_status":
+                "sentinelone_exact_id_match",
+            "metadata_issues":
+                sorted(set(metadata_issues))
+        }
+
+        clients[matched_client][
+            "correlated_tickets"
+        ].append(
+            correlated_ticket
+        )
+
+        clients[matched_client][
+            "matched_source_indexes"
+        ].add(
+            matched_source["index"]
+        )
 
     result = []
 
@@ -187,8 +346,44 @@ def compare_data(
             client["sentinel_alerts"]
         )
 
-        ticket_count = len(
-            client["jira_tickets"]
+        strict_ticket_count = len(
+            client["strict_tickets"]
+        )
+
+        correlated_ticket_count = len(
+            client["correlated_tickets"]
+        )
+
+        unique_matched_source_count = len(
+            client["matched_source_indexes"]
+        )
+
+        missing_ticket_count = max(
+            alert_count
+            - unique_matched_source_count,
+            0
+        )
+
+        extra_ticket_count = max(
+            correlated_ticket_count
+            - alert_count,
+            0
+        )
+
+        coverage_delta = (
+            correlated_ticket_count
+            - alert_count
+        )
+
+        metadata_drift_count = sum(
+            1
+            for ticket in client["correlated_tickets"]
+            if ticket.get("metadata_issues")
+        )
+
+        status = _sentinelone_status(
+            missing_ticket_count,
+            extra_ticket_count
         )
 
         result.append({
@@ -197,26 +392,69 @@ def compare_data(
                 list(client["sources"])
             ),
             "sentinel_count": alert_count,
-            "jira_count": ticket_count,
+            "jira_count": strict_ticket_count,
             "alert_count": alert_count,
-            "ticket_count": ticket_count,
-            **_coverage_fields(
-                alert_count,
-                ticket_count
-            ),
+            "ticket_count": correlated_ticket_count,
+            "strict_ticket_count":
+                strict_ticket_count,
+            "correlated_ticket_count":
+                correlated_ticket_count,
+            "unique_matched_source_count":
+                unique_matched_source_count,
+            "metadata_drift_count":
+                metadata_drift_count,
+            "coverage_status":
+                status,
+            "coverage_delta":
+                coverage_delta,
+            "missing_ticket_count":
+                missing_ticket_count,
+            "extra_ticket_count":
+                extra_ticket_count,
             "status":
-                "Equal"
-                if alert_count == ticket_count
-                else
-                "Mismatch",
+                status,
             "sentinel_alerts":
                 client["sentinel_alerts"],
             "jira_tickets":
-                client["jira_tickets"]
+                client["correlated_tickets"],
+            "tickets":
+                client["correlated_tickets"],
+            "strict_tickets":
+                client["strict_tickets"]
         })
 
-    coverage_totals = _coverage_totals(
-        result
+    strict_total_tickets = sum(
+        client["strict_ticket_count"]
+        for client in result
+    )
+
+    correlated_total_tickets = sum(
+        client["correlated_ticket_count"]
+        for client in result
+    )
+
+    metadata_drift_total = sum(
+        client["metadata_drift_count"]
+        for client in result
+    )
+
+    total_alerts = len(
+        sentinel_alerts
+    )
+
+    coverage_delta_total = (
+        correlated_total_tickets
+        - total_alerts
+    )
+
+    missing_ticket_total = sum(
+        client["missing_ticket_count"]
+        for client in result
+    )
+
+    extra_ticket_total = sum(
+        client["extra_ticket_count"]
+        for client in result
     )
 
     return {
@@ -227,15 +465,37 @@ def compare_data(
             len(sentinel_alerts),
 
         "total_jira_count":
-            len(jira_tickets),
+            strict_total_tickets,
 
         "total_alerts":
-            len(sentinel_alerts),
+            total_alerts,
 
         "total_tickets":
-            len(jira_tickets),
+            correlated_total_tickets,
 
-        **coverage_totals,
+        "strict_total_tickets":
+            strict_total_tickets,
+
+        "correlated_total_tickets":
+            correlated_total_tickets,
+
+        "metadata_drift_total":
+            metadata_drift_total,
+
+        "coverage_delta_total":
+            coverage_delta_total,
+
+        "missing_ticket_total":
+            missing_ticket_total,
+
+        "extra_ticket_total":
+            extra_ticket_total,
+
+        "unmapped_ticket_count":
+            len(unmapped_tickets),
+
+        "unmapped_tickets":
+            unmapped_tickets,
 
         "clients":
             result
