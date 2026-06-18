@@ -1,4 +1,5 @@
 import json
+import re
 
 import requests
 
@@ -78,6 +79,182 @@ def extract_site_name(description):
         pass
 
     return "Unknown"
+
+
+def _get_adf_text_with_links(node):
+    if isinstance(node, str):
+        return node
+
+    if not isinstance(node, dict):
+        return ""
+
+    text_parts = []
+
+    if node.get("type") == "text":
+        text_parts.append(
+            node.get("text", "")
+        )
+
+    attrs = node.get("attrs", {})
+
+    if isinstance(attrs, dict):
+        href = attrs.get("href")
+
+        if isinstance(href, str):
+            text_parts.append(href)
+
+    for mark in node.get("marks", []) or []:
+        if not isinstance(mark, dict):
+            continue
+
+        mark_attrs = mark.get("attrs", {})
+
+        if not isinstance(mark_attrs, dict):
+            continue
+
+        href = mark_attrs.get("href")
+
+        if isinstance(href, str):
+            text_parts.append(href)
+
+    for child in node.get("content", []) or []:
+        child_text = _get_adf_text_with_links(
+            child
+        )
+
+        if child_text:
+            text_parts.append(child_text)
+
+    return " ".join(
+        part
+        for part in text_parts
+        if part
+    )
+
+
+_SENTINELONE_THREAT_ID_PATTERNS = [
+    re.compile(
+        r"(?i)\bSentinelOne\s+Threat\s+ID\b\s*[:=]?\s*"
+        r"([A-Za-z0-9._:-]{6,})"
+    ),
+    re.compile(
+        r"(?i)\bThreat\s+ID\b\s*[:=]?\s*"
+        r"([A-Za-z0-9._:-]{6,})"
+    ),
+    re.compile(
+        r"(?i)\bthreatId\b\s*[:=]?\s*"
+        r"([A-Za-z0-9._:-]{6,})"
+    ),
+    re.compile(
+        r"(?i)\bSource\s+(?:Alert|Threat)\s+ID\b\s*[:=]?\s*"
+        r"([A-Za-z0-9._:-]{6,})"
+    )
+]
+
+_SENTINELONE_THREAT_URL_PATTERN = re.compile(
+    r"(?i)https?://[^\s\])}]+sentinelone\.net"
+    r"/[^\s\])}]*?/threats/([A-Za-z0-9._:-]+)"
+)
+
+_SENTINELONE_CONSOLE_URL_PATTERN = re.compile(
+    r"(?i)https?://[^\s\])}]+sentinelone\.net/[^\s\])}]+"
+)
+
+_AZURE_OR_MICROSOFT_SENTINEL_PATTERN = re.compile(
+    r"(?i)(portal\.azure\.com|Microsoft_Azure_Security_Insights|"
+    r"Microsoft Sentinel|Azure Sentinel|Sentinel Incident|Incident URL)"
+)
+
+
+def _clean_sentinelone_identifier(value):
+    if not isinstance(value, str):
+        return ""
+
+    return re.sub(
+        r"(?i)(Threat|Incident|URL|Details|ID)$",
+        "",
+        value.strip().strip(":;,.)]")
+    ).strip()
+
+
+def _extract_sentinelone_jira_evidence(summary, description):
+    safe_text = " ".join(
+        value
+        for value in [
+            summary or "",
+            _get_adf_text_with_links(description)
+        ]
+        if value
+    )
+
+    threat_ids = []
+
+    for pattern in _SENTINELONE_THREAT_ID_PATTERNS:
+        for match in pattern.finditer(safe_text):
+            threat_id = _clean_sentinelone_identifier(
+                match.group(1)
+            )
+
+            if threat_id:
+                threat_ids.append(threat_id)
+
+    threat_url_ids = []
+
+    for match in _SENTINELONE_THREAT_URL_PATTERN.finditer(safe_text):
+        threat_url_id = _clean_sentinelone_identifier(
+            match.group(1)
+        )
+
+        if threat_url_id:
+            threat_url_ids.append(threat_url_id)
+
+    console_url = ""
+    console_url_match = _SENTINELONE_CONSOLE_URL_PATTERN.search(
+        safe_text
+    )
+
+    if console_url_match:
+        console_url = console_url_match.group(0)
+
+    unique_threat_ids = sorted(
+        set(threat_ids)
+    )
+    unique_threat_url_ids = sorted(
+        set(threat_url_ids)
+    )
+
+    evidence = {
+        "sentinelone_threat_id":
+            unique_threat_ids[0]
+            if unique_threat_ids
+            else "",
+        "sentinelone_threat_url_id":
+            unique_threat_url_ids[0]
+            if unique_threat_url_ids
+            else "",
+        "sentinelone_identifier_source": ""
+    }
+
+    if console_url:
+        evidence[
+            "sentinelone_console_url"
+        ] = console_url
+
+    if unique_threat_ids:
+        evidence[
+            "sentinelone_identifier_source"
+        ] = "description"
+    elif unique_threat_url_ids:
+        evidence[
+            "sentinelone_identifier_source"
+        ] = "url"
+
+    if _AZURE_OR_MICROSOFT_SENTINEL_PATTERN.search(safe_text):
+        evidence[
+            "non_sentinelone_evidence_type"
+        ] = "azure_or_microsoft_sentinel"
+
+    return evidence
 
 
 def _get_adf_text(node):
@@ -413,11 +590,23 @@ def fetch_jira_tickets(
 
     for issue in all_issues:
 
+        fields = issue.get(
+            "fields",
+            {}
+        )
+
+        description = fields.get(
+            "description",
+            {}
+        )
+
+        summary = fields.get(
+            "summary",
+            ""
+        )
+
         client = extract_site_name(
-            issue["fields"].get(
-                "description",
-                {}
-            )
+            description
         )
 
         if client == "Unknown":
@@ -428,15 +617,16 @@ def fetch_jira_tickets(
                 "key": issue["key"],
                 "client": client,
                 "summary":
-                    issue["fields"].get(
-                        "summary",
-                        ""
-                    ),
+                    summary,
                 "created":
-                    issue["fields"].get(
+                    fields.get(
                         "created",
                         ""
-                    )
+                    ),
+                **_extract_sentinelone_jira_evidence(
+                    summary,
+                    description
+                )
             }
         )
 

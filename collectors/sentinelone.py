@@ -9,6 +9,72 @@ from config import (
 )
 
 
+def _safe_string(value):
+    if value is None:
+        return ""
+
+    return str(value)
+
+
+def _extract_sentinelone_safe_fields(alert):
+    threat_info = alert.get(
+        "threatInfo",
+        {}
+    )
+
+    if not isinstance(threat_info, dict):
+        threat_info = {}
+
+    source_id = _safe_string(
+        alert.get("id")
+    )
+
+    threat_id = _safe_string(
+        threat_info.get("threatId")
+    )
+
+    console_url = _safe_string(
+        threat_info.get("consoleUrl")
+    )
+
+    safe_fields = {
+        "sentinelone_source_id":
+            source_id,
+        "sentinelone_threat_id":
+            threat_id or source_id,
+        "sentinelone_threat_name":
+            _safe_string(
+                threat_info.get("threatName")
+            ),
+        "sentinelone_created_at":
+            _safe_string(
+                threat_info.get("createdAt")
+            ),
+        "sentinelone_updated_at":
+            _safe_string(
+                threat_info.get("updatedAt")
+            ),
+        "sentinelone_incident_status":
+            _safe_string(
+                threat_info.get("incidentStatus")
+            ),
+        "sentinelone_detection_type":
+            _safe_string(
+                threat_info.get("detectionType")
+            )
+    }
+
+    if console_url:
+        safe_fields[
+            "sentinelone_console_url"
+        ] = console_url
+        safe_fields[
+            "sentinelone_threat_url"
+        ] = console_url
+
+    return safe_fields
+
+
 def fetch_sentinelone_alerts(
     source_name,
     url,
@@ -82,7 +148,10 @@ def fetch_sentinelone_alerts(
             {
                 "id": alert["id"],
                 "client": site_name,
-                "source": source_name
+                "source": source_name,
+                **_extract_sentinelone_safe_fields(
+                    alert
+                )
             }
         )
 
