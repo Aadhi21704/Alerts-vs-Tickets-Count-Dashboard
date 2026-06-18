@@ -13,6 +13,8 @@
     <section class="status-hero
         {% if dashboard.status == 'Equal' %}
             status-hero--clear
+        {% elif dashboard.status == 'Triaging' %}
+            status-hero--warning
         {% else %}
             status-hero--attention
         {% endif %}
@@ -25,6 +27,8 @@
                 <h1>
                     {% if dashboard.status == "Equal" %}
                         ALL CLEAR
+                    {% elif dashboard.status == "Triaging" %}
+                        TRIAGING
                     {% else %}
                         ACTION REQUIRED
                     {% endif %}
@@ -33,6 +37,10 @@
                     {% if dashboard.status == "Equal" %}
                         Alert and Jira ticket counts are
                         reconciled across all monitored tools.
+                    {% elif dashboard.status == "Triaging" %}
+                        {{ dashboard.triaging_count }} client
+                        review item{% if dashboard.triaging_count != 1 %}s{% endif %}
+                        may reflect triage, escalation, duplicate, or stale-ticket behavior.
                     {% else %}
                         {{ dashboard.mismatch_count }} client
                         reconciliation issue{% if dashboard.mismatch_count != 1 %}s{% endif %}
@@ -43,6 +51,8 @@
             <span class="status-badge
                 {% if dashboard.status == 'Equal' %}
                     status-badge--equal
+                {% elif dashboard.status == 'Triaging' %}
+                    status-badge--warning
                 {% else %}
                     status-badge--mismatch
                 {% endif %}
@@ -106,6 +116,8 @@
         <article class="summary-card
             {% if dashboard.total_delta == 0 %}
                 summary-card--equal
+            {% elif dashboard.total_delta > 0 %}
+                summary-card--warning
             {% else %}
                 summary-card--mismatch
             {% endif %}
@@ -120,6 +132,8 @@
     <section class="priority-card
         {% if dashboard.priority_issue %}
             priority-card--attention
+        {% elif dashboard.status == 'Triaging' %}
+            priority-card--warning
         {% else %}
             priority-card--clear
         {% endif %}
@@ -135,6 +149,8 @@
                     <span aria-hidden="true">→</span>
                     {{ dashboard.priority_issue.client }}
                 </h2>
+                {% elif dashboard.status == "Triaging" %}
+                <h2>Triage review recommended</h2>
                 {% else %}
                 <h2>No reconciliation gaps detected</h2>
                 {% endif %}
@@ -142,12 +158,16 @@
             <span class="status-badge
                 {% if dashboard.priority_issue %}
                     status-badge--mismatch
+                {% elif dashboard.status == 'Triaging' %}
+                    status-badge--warning
                 {% else %}
                     status-badge--equal
                 {% endif %}
             ">
                 {% if dashboard.priority_issue %}
                     Action Required
+                {% elif dashboard.status == "Triaging" %}
+                    Triaging
                 {% else %}
                     All Clear
                 {% endif %}
@@ -189,7 +209,12 @@
         </div>
         {% else %}
         <p class="priority-card__message">
-            No client requires immediate investigation.
+            {% if dashboard.status == "Triaging" %}
+                Extra Jira tickets exist without missing alert coverage.
+                Review triage, escalation, duplicate, or stale-ticket behavior.
+            {% else %}
+                No client requires immediate investigation.
+            {% endif %}
         </p>
         {% endif %}
     </section>
@@ -207,8 +232,10 @@
         <div class="tool-health-grid">
             {% for tool in tools %}
             <article class="tool-health-card
-                {% if tool.status == 'Equal' %}
+                {% if tool.tool_display_status == 'Equal' %}
                     tool-health-card--equal
+                {% elif tool.tool_display_status == 'Triaging' %}
+                    tool-health-card--warning
                 {% else %}
                     tool-health-card--mismatch
                 {% endif %}
@@ -216,13 +243,15 @@
                 <div class="tool-health-card__header">
                     <h3>{{ tool.tool }}</h3>
                     <span class="status-badge
-                        {% if tool.status == 'Equal' %}
+                        {% if tool.tool_display_status == 'Equal' %}
                             status-badge--equal
+                        {% elif tool.tool_display_status == 'Triaging' %}
+                            status-badge--warning
                         {% else %}
                             status-badge--mismatch
                         {% endif %}
                     ">
-                        {{ tool.status }}
+                        {{ tool.tool_display_status }}
                     </span>
                 </div>
 
@@ -288,14 +317,6 @@
             {% endfor %}
         </div>
     </section>
-
-    {% if dashboard.has_wazuh %}
-    <aside class="data-quality-strip">
-        <strong>Data limitation:</strong>
-        Wazuh alert IDs are not available from the WHB API yet.
-        Jira ticket drilldown is available.
-    </aside>
-    {% endif %}
 </main>
 </body>
 </html>

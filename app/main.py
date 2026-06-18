@@ -76,6 +76,59 @@ def find_client(tool, client_name):
     )
 
 
+def build_soc_display(
+    alert_count,
+    ticket_count,
+    coverage_status=None,
+    coverage_delta=None,
+    missing_ticket_count=None,
+    extra_ticket_count=None
+):
+
+    if coverage_delta is None:
+        coverage_delta = ticket_count - alert_count
+
+    if missing_ticket_count is None:
+        missing_ticket_count = max(
+            -coverage_delta,
+            0
+        )
+
+    if extra_ticket_count is None:
+        extra_ticket_count = max(
+            coverage_delta,
+            0
+        )
+
+    if (
+        missing_ticket_count > 0
+        or coverage_status == "Missing Tickets"
+    ):
+        display_status = "Mismatch"
+    elif (
+        extra_ticket_count > 0
+        or coverage_status == "Extra Tickets - Review"
+    ):
+        display_status = "Triaging"
+    else:
+        display_status = "Equal"
+
+    delta_display = (
+        f"{extra_ticket_count} extra tickets"
+        if extra_ticket_count
+        else str(coverage_delta)
+    )
+
+    return {
+        "coverage_delta": coverage_delta,
+        "coverage_delta_display": delta_display,
+        "coverage_display_status": display_status,
+        "tool_display_status": display_status,
+        "missing_ticket_count": missing_ticket_count,
+        "extra_ticket_count": extra_ticket_count
+    }
+
+
 def build_tool_context(tool):
 
     clients = [
@@ -157,21 +210,12 @@ def build_tool_context(tool):
         max(-coverage_delta, 0)
     )
 
-    if extra_ticket_total:
-        delta_display = f"{extra_ticket_total} extra tickets"
-    elif "coverage_delta_total" in tool:
-        delta_display = str(coverage_delta)
-    else:
-        delta_display = f"{delta:+d}"
-
-    tool_display_status = (
-        "Mismatch"
-        if mismatch_count
-        else (
-            "Triaging"
-            if warning_count
-            else "Equal"
-        )
+    soc_display = build_soc_display(
+        alert_count,
+        ticket_count,
+        coverage_delta=coverage_delta,
+        missing_ticket_count=missing_ticket_total,
+        extra_ticket_count=extra_ticket_total
     )
 
     tool_context = {
@@ -180,16 +224,25 @@ def build_tool_context(tool):
         "alert_count": alert_count,
         "ticket_count": ticket_count,
         "delta": delta,
-        "delta_display": delta_display,
-        "coverage_delta": coverage_delta,
+        "delta_display": soc_display[
+            "coverage_delta_display"
+        ],
+        "coverage_delta": soc_display[
+            "coverage_delta"
+        ],
         "missing_ticket_total": missing_ticket_total,
         "extra_ticket_total": extra_ticket_total,
         "client_count": len(clients),
         "mismatch_count": mismatch_count,
         "warning_count": warning_count,
+        "triaging_count": warning_count,
         "review_count": mismatch_count + warning_count,
-        "tool_display_status": tool_display_status,
-        "status": tool_display_status
+        "tool_display_status": soc_display[
+            "tool_display_status"
+        ],
+        "status": soc_display[
+            "tool_display_status"
+        ]
     }
 
     if not has_correlation_ui:
@@ -260,57 +313,24 @@ def build_client_context(client):
             )
         )
     )
-    display_status = coverage_status
-
-    if coverage_status == "Extra Tickets - Review":
-        display_status = "Triage Review"
-
-    if extra_ticket_count:
-        coverage_delta_display = (
-            f"{extra_ticket_count} extra tickets"
-        )
-    else:
-        coverage_delta_display = str(
-            coverage_delta
-        )
-
-    tool_display_status = client.get(
-        "status",
-        (
-            "Equal"
-            if alert_count == ticket_count
-            else "Mismatch"
-        )
+    soc_display = build_soc_display(
+        alert_count,
+        ticket_count,
+        coverage_status=coverage_status,
+        coverage_delta=coverage_delta,
+        missing_ticket_count=missing_ticket_count,
+        extra_ticket_count=extra_ticket_count
     )
-
-    if (
-        missing_ticket_count > 0
-        or coverage_status == "Missing Tickets"
-    ):
-        tool_display_status = "Mismatch"
-    elif (
-        extra_ticket_count > 0
-        or coverage_status == "Extra Tickets - Review"
-    ):
-        tool_display_status = "Triaging"
-    elif (
-        coverage_status == "Covered"
-        and alert_count == ticket_count
-    ):
-        tool_display_status = "Equal"
 
     return {
         **client,
         "alert_count": alert_count,
         "ticket_count": ticket_count,
         "delta": delta,
-        "delta_display": f"{delta:+d}",
-        "coverage_delta": coverage_delta,
-        "coverage_delta_display": coverage_delta_display,
-        "coverage_display_status": display_status,
-        "tool_display_status": tool_display_status,
-        "missing_ticket_count": missing_ticket_count,
-        "extra_ticket_count": extra_ticket_count,
+        "delta_display": soc_display[
+            "coverage_delta_display"
+        ],
+        **soc_display,
         "display_tickets": (
             list(reversed(tickets))
             if alerts and tickets
@@ -336,12 +356,9 @@ def build_homepage_tool_context(tool):
         ticket_count,
         1
     )
-    delta = alert_count - ticket_count
 
     return {
         **tool,
-        "delta": delta,
-        "delta_display": f"{delta:+d}",
         "alert_bar_percentage": round(
             (alert_count / bar_maximum) * 100
         ),
@@ -375,7 +392,23 @@ def dashboard(request: Request):
         tool["mismatch_count"]
         for tool in tools
     )
-    total_delta = total_alerts - total_tickets
+    triaging_count = sum(
+        tool.get("triaging_count", 0)
+        for tool in tools
+    )
+    total_delta = sum(
+        tool.get("coverage_delta", 0)
+        for tool in tools
+    )
+    total_extra_tickets = sum(
+        tool.get("extra_ticket_total", 0)
+        for tool in tools
+    )
+    total_delta_display = (
+        f"{total_extra_tickets} extra tickets"
+        if total_extra_tickets
+        else str(total_delta)
+    )
 
     mismatch_issues = []
     affected_tools = []
@@ -395,11 +428,6 @@ def dashboard(request: Request):
                 "client",
                 ""
             )
-            client_delta = (
-                client["alert_count"]
-                - client["ticket_count"]
-            )
-
             mismatch_issues.append(
                 {
                     "tool": tool["tool"],
@@ -409,9 +437,15 @@ def dashboard(request: Request):
                         client["alert_count"],
                     "ticket_count":
                         client["ticket_count"],
-                    "delta": client_delta,
+                    "delta": client.get(
+                        "coverage_delta",
+                        0
+                    ),
                     "delta_display":
-                        f"{client_delta:+d}"
+                        client.get(
+                            "coverage_delta_display",
+                            "0"
+                        )
                 }
             )
 
@@ -438,8 +472,10 @@ def dashboard(request: Request):
         "ticket_count": total_tickets,
         "total_delta": total_delta,
         "total_delta_display":
-            f"{total_delta:+d}",
+            total_delta_display,
         "mismatch_count": mismatch_count,
+        "triaging_count": triaging_count,
+        "review_count": mismatch_count + triaging_count,
         "affected_tools": affected_tools,
         "affected_clients": affected_clients,
         "priority_issue": (
@@ -454,10 +490,13 @@ def dashboard(request: Request):
     }
 
     dashboard_context["status"] = (
-        "Equal"
-        if dashboard_context["mismatch_count"] == 0
-        else
         "Mismatch"
+        if mismatch_count
+        else (
+            "Triaging"
+            if triaging_count
+            else "Equal"
+        )
     )
 
     return templates.TemplateResponse(

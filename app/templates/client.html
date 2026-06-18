@@ -52,9 +52,9 @@
     </nav>
 
     <section class="page-hero
-        {% if display_status in ['Equal', 'Covered'] %}
+        {% if display_status == 'Equal' %}
             page-hero--equal
-        {% elif display_status == 'Triage Review' %}
+        {% elif display_status == 'Triaging' %}
             page-hero--warning
         {% else %}
             page-hero--mismatch
@@ -75,9 +75,9 @@
                 </p>
             </div>
             <span class="status-badge
-                {% if display_status in ['Equal', 'Covered'] %}
+                {% if display_status == 'Equal' %}
                     status-badge--equal
-                {% elif display_status == 'Triage Review' %}
+                {% elif display_status == 'Triaging' %}
                     status-badge--warning
                 {% else %}
                     status-badge--mismatch
@@ -123,7 +123,7 @@
             {% if (
                 client.metadata_drift_count | default(0) > 0
                 and
-                display_status == "Covered"
+                display_status == "Equal"
             ) %}
             <span class="insight-chip insight-chip--muted">
                 {{ client.metadata_drift_count }}

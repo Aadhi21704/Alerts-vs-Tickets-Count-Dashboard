@@ -217,6 +217,10 @@ body {
     border-left-color: #ef4444;
 }
 
+.status-hero--warning {
+    border-left-color: #f59e0b;
+}
+
 .status-hero__headline,
 .section-heading,
 .tool-health-card__header,
@@ -240,6 +244,10 @@ body {
 
 .status-hero--attention h1 {
     color: #fca5a5;
+}
+
+.status-hero--warning h1 {
+    color: #fbbf24;
 }
 
 .status-hero__summary {
@@ -369,6 +377,10 @@ body {
     border-bottom: 3px solid #ef4444;
 }
 
+.summary-card--warning {
+    border-bottom: 3px solid #f59e0b;
+}
+
 .priority-card,
 .tool-health-card {
     background: #101c2e;
@@ -383,6 +395,10 @@ body {
 
 .priority-card--attention {
     border-left: 4px solid #ef4444;
+}
+
+.priority-card--warning {
+    border-left: 4px solid #f59e0b;
 }
 
 .priority-card--clear {
@@ -479,6 +495,10 @@ body {
 
 .tool-health-card--mismatch {
     border-top-color: #ef4444;
+}
+
+.tool-health-card--warning {
+    border-top-color: #f59e0b;
 }
 
 .tool-health-card__header h3 {
