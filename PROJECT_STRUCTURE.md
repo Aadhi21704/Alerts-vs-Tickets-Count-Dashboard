@@ -154,6 +154,16 @@ Responsibilities:
 * Apply filtering
 * Normalize record shape
 * Preserve raw SentinelOne client names
+* Preserve safe SentinelOne source identifiers for exact-ID correlation
+
+Safe SentinelOne evidence includes:
+
+* Source alert ID
+* SentinelOne threat ID
+* Threat URL ID when present
+* Threat name and timestamps as supporting metadata only, not match keys
+
+Collectors must not store raw SentinelOne payloads in dashboard output.
 
 ---
 
@@ -256,6 +266,7 @@ Current responsibilities:
 * Client status
 * Source aggregation
 * Exact SentinelOne alias normalization before grouping
+* Exact SentinelOne source-to-Jira ID correlation
 * Raw Securonix incident-list comparison
 * Wazuh coverage-first correlation comparison
 
@@ -265,22 +276,32 @@ canonical client name.
 
 Collectors do not own or duplicate this alias mapping.
 
-Wazuh is currently the only tool using the correlation resilience flow. Its
-comparison uses source alert counts and correlated Jira tickets as the primary
-coverage signal. Strict tenant-field ticket counts and metadata drift are
-retained as secondary evidence. SentinelOne and Securonix comparison behavior
-is unchanged for now.
+SentinelOne uses exact-ID correlation. It matches Jira tickets only when
+`sentinelone_threat_id` or `sentinelone_threat_url_id` exactly matches a
+current SentinelOne source identifier such as `id`,
+`sentinelone_source_id`, or `sentinelone_threat_id`. It does not match Azure
+or Microsoft Sentinel IDs, threat names, timestamps, client/site alone,
+summary text, or fuzzy similarity.
 
-Wazuh statuses use SOC coverage language:
+Wazuh uses the correlation resilience flow. Its comparison uses source alert
+counts and correlated Jira tickets as the primary coverage signal. Strict
+tenant-field ticket counts and metadata drift are retained as secondary
+evidence.
+
+Securonix currently uses compatibility/count-based coverage fields only. Do
+not claim it has real source-to-Jira correlation until Jira tickets reliably
+include stable `incidentId` or source incident URL evidence.
+
+SOC coverage language:
 
 * Covered / Equal: alert coverage is complete
 * Missing Tickets / Mismatch: source alerts lack Jira coverage
 * Extra Tickets / Triaging: Jira has more tickets than source alerts and needs
   triage, escalation, duplicate, or stale-ticket review
 
-Wazuh coverage deltas are `correlated_ticket_count - alert_count`. Equal
-coverage is `0`, missing tickets are negative values, and extra tickets are
-reported separately as `extra_ticket_count` rather than as `+x` wording.
+Coverage deltas are `correlated_ticket_count - alert_count`. Equal coverage
+is `0`, missing tickets are negative values, and extra tickets are reported
+separately as `extra_ticket_count` rather than as `+x` wording.
 
 Future goal:
 
@@ -415,9 +436,9 @@ Displays:
 * Display-only evidence alignment
 
 For Wazuh only, the client page presents coverage-first insight and compact
-grouped source evidence from WHB. This is a UI implementation of the Wazuh
-correlation pattern and does not imply SentinelOne or Securonix use the same
-correlation resilience flow yet.
+grouped source evidence from WHB. SentinelOne uses exact-ID ticket evidence
+instead. Securonix remains compatibility/count based and must not display fake
+correlation evidence.
 
 ---
 
@@ -496,6 +517,9 @@ collectors/
 ```
 
 The architecture should scale by adding new collectors rather than redesigning existing folders.
+
+If tool-specific correlation grows, move that logic into cleaner plugin-style
+modules instead of adding unrelated logic to collectors or templates.
 
 ---
 

@@ -18,6 +18,8 @@
 * [x] Reseller source tags
 * [x] SentinelOne dashboard integration
 * [x] SentinelOne Jira comparison
+* [x] SentinelOne safe source/Jira identifier extraction
+* [x] SentinelOne exact-ID Jira correlation
 * [x] Greenko EDR exclusion
 * [x] Tool-card homepage
 * [x] Wazuh collector integration
@@ -137,7 +139,9 @@ Completed
 ### Wazuh Correlation Resilience
 
 Wazuh is the first implementation of the coverage-first SOC pattern.
-SentinelOne and Securonix do not yet use this correlation resilience flow.
+SentinelOne now uses exact-ID correlation, but it does not use Wazuh's
+tenant-field and client-hint resilience flow. Securonix does not yet use real
+source-to-Jira correlation.
 
 Implemented behavior:
 
@@ -158,6 +162,42 @@ Implemented behavior:
 Status:
 
 Completed for Wazuh only
+
+---
+
+## Completed SentinelOne Correlation Work
+
+### SentinelOne Exact-ID Correlation
+
+SentinelOne Jira tickets now count as correlated coverage only when exact
+SentinelOne evidence matches a current source alert.
+
+Implemented matching keys:
+
+* Source `id`
+* `sentinelone_source_id`
+* `sentinelone_threat_id`
+* SentinelOne threat URL ID when present
+
+Explicitly not used for matching:
+
+* Azure or Microsoft Sentinel incident IDs
+* Threat name
+* Timestamps
+* Client/site alone
+* Jira summary text
+* Fuzzy similarity
+
+Coverage behavior:
+
+* Missing exact matches become Mismatch / Missing Tickets.
+* Extra matched Jira tickets become Triaging / Extra Tickets - Review.
+* Equal exact-ID coverage is Equal / Covered.
+* Metadata drift remains secondary evidence.
+
+Status:
+
+Completed
 
 ---
 
@@ -269,7 +309,8 @@ Planned
 
 ### Tool-Agnostic Comparator
 
-Current comparator still contains SentinelOne-oriented assumptions.
+Current comparator contains tool-specific correlation paths for SentinelOne
+and Wazuh, plus compatibility/count defaults for Securonix.
 
 Goal:
 
@@ -277,10 +318,29 @@ Comparator should operate entirely on normalized tool data.
 
 Requirements:
 
-* No vendor-specific branching
+* Minimize vendor-specific branching
 * Reusable across all tools
 * Evaluate whether the Wazuh coverage/correlation model should become the
   generic SOC pattern for additional tools
+* Consider moving tool-specific correlation into plugin-style modules if the
+  comparator becomes hard to maintain
+
+Status:
+
+Planned
+
+---
+
+### Securonix Stable Jira Evidence
+
+Before implementing real Securonix correlation, update the Jira ticket
+template/process so Security Incident tickets reliably include:
+
+* Stable Securonix `incidentId`
+* Source incident URL
+
+Do not implement Securonix source-to-Jira correlation using tenant-only,
+timestamp-only, name-only, or fuzzy matching.
 
 Status:
 
@@ -395,9 +455,14 @@ Current active development focus:
 
 1. Stable dashboard release `dashboard-ui-v1.1`
 2. Stabilize the canonical API and data model across all integrated tools
-3. React migration planning
-4. Optional charts and polish
+3. Keep coverage labels consistent: Equal, Mismatch, Triaging
+4. Plan Securonix stable Jira evidence before correlation
+5. React migration planning
+6. Optional charts and polish
 
 Do not replace the stable dashboard unless explicitly requested.
 
 Prefer extending the existing architecture over introducing new patterns.
+
+Avoid fuzzy matching unless explicitly approved after a separate evidence
+audit.

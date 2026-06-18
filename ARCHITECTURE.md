@@ -128,6 +128,27 @@ Client pages display:
 
 ---
 
+## Dashboard SOC Coverage Labels
+
+The dashboard uses coverage-first SOC labels across tools:
+
+* Equal means source alert or incident coverage is balanced with Jira tickets.
+* Mismatch means source alerts or incidents are missing Jira ticket coverage.
+* Triaging means extra Jira tickets exist and should be reviewed for triage,
+  escalation, duplicate, or stale-ticket behavior.
+
+Delta display rules:
+
+* Equal coverage displays `0`.
+* Missing tickets display a negative delta, for example `-2`.
+* Extra tickets are displayed as `x extra tickets`.
+* The UI must not display `+0` or `+x`.
+
+Metadata drift is secondary evidence. It must not become the primary red
+coverage state by itself.
+
+---
+
 ## Source Tags
 
 Implemented.
@@ -162,9 +183,48 @@ Implemented:
 * Managed client registry
 * Exact client alias normalization
 * Source tagging
-* Jira comparison
+* Exact-ID Jira correlation
 * Dashboard integration
 * Client drilldowns
+
+### SentinelOne Exact-ID Correlation
+
+SentinelOne uses exact identifier matching between current source alerts and
+Jira tickets. Jira tickets count as correlated coverage only when SentinelOne
+evidence in Jira exactly matches a current SentinelOne source identifier.
+
+Source identifiers used for matching:
+
+* `id`
+* `sentinelone_source_id`
+* `sentinelone_threat_id`
+* SentinelOne threat URL ID when present
+
+Jira identifiers used for matching:
+
+* `sentinelone_threat_id`
+* `sentinelone_threat_url_id`
+
+SentinelOne does not match on:
+
+* Azure or Microsoft Sentinel incident IDs
+* Threat name
+* Timestamps
+* Client or site alone
+* Jira summary text
+* Fuzzy similarity
+
+Matched Jira tickets are attributed to the matched source alert's canonical
+client. The parsed Jira client is retained as strict metadata. If it differs
+from the matched source client, the ticket is marked with
+`client_metadata_drift`. Metadata drift is secondary evidence and is not a
+coverage failure by itself.
+
+SentinelOne coverage behavior:
+
+* Missing exact source-to-Jira matches produce Mismatch / Missing Tickets.
+* Extra matched Jira tickets produce Triaging / Extra Tickets - Review.
+* Equal exact-ID coverage produces Equal / Covered.
 
 ### SentinelOne Client Normalization
 
@@ -260,8 +320,9 @@ dashboard schema.
 
 Wazuh is currently the only tool using the correlation resilience flow. It is
 the first reference implementation of a future SOC pattern that can be
-extended to other tools later. SentinelOne and Securonix behavior is unchanged
-for now.
+extended to other tools later. SentinelOne now has exact-ID correlation, but
+does not use Wazuh's tenant-field and client-hint resilience flow. Securonix
+behavior remains compatibility/count based for now.
 
 Coverage is the primary Wazuh signal:
 
@@ -341,6 +402,11 @@ Jira integration:
 Securonix uses raw incident-list comparison like SentinelOne. Incident records
 are compared against Jira tickets per client and are stored under generic
 `alerts` evidence fields for dashboard compatibility.
+
+Securonix currently uses compatibility/count-based coverage fields only. It
+does not yet have real source-to-Jira correlation. Real Securonix correlation
+should wait until Jira tickets reliably include a stable Securonix
+`incidentId` or source incident URL.
 
 Sensitive Securonix fields are excluded and must not be stored or displayed:
 
@@ -498,6 +564,12 @@ Avoid duplicating configuration elsewhere.
 Future milestones:
 
 * Expand client normalization only through approved exact mappings
+* Add stable Securonix `incidentId` or source URL evidence to Jira ticket
+  templates before implementing Securonix source-to-Jira correlation
+* Consider moving tool-specific correlation into cleaner plugin-style modules
+  if the comparator grows too large
+* Avoid fuzzy matching unless explicitly approved for a specific audited use
+  case
 * React migration planning using the stabilized `/api/dashboard`
 * Auto-refresh strategy
 * Optional dashboard visualizations

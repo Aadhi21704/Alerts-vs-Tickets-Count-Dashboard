@@ -40,6 +40,7 @@ The following items are considered completed and should not be reimplemented:
 * SentinelOne dashboard integration
 * SentinelOne Jira integration
 * SentinelOne comparator integration
+* SentinelOne exact-ID Jira correlation
 * SentinelOne client normalization v1
 * Alert ID drilldowns
 * Jira Ticket ID drilldowns
@@ -249,6 +250,26 @@ Additional future drilldowns should be added here rather than creating additiona
 
 ---
 
+## SOC Coverage Labels
+
+Dashboard status labels should use coverage-first SOC semantics:
+
+* Equal means source alert or incident coverage is balanced with Jira tickets.
+* Mismatch means source alerts or incidents are missing Jira tickets.
+* Triaging means extra Jira tickets exist and need review for triage,
+  escalation, duplicates, or stale-ticket behavior.
+
+Delta display rules:
+
+* Equal displays `0`.
+* Missing tickets display a negative value, for example `-2`.
+* Extra tickets display as `x extra tickets`.
+* Do not display `+0` or `+x`.
+
+Metadata drift is secondary and must not make coverage red by itself.
+
+---
+
 # SentinelOne Rules
 
 ## Sources
@@ -358,6 +379,36 @@ is manually confirmed and an exact mapping is approved.
 
 ---
 
+## Exact-ID Correlation
+
+SentinelOne source-to-Jira correlation must use exact SentinelOne identifiers
+only.
+
+Allowed source identifiers:
+
+* `id`
+* `sentinelone_source_id`
+* `sentinelone_threat_id`
+* SentinelOne threat URL ID when present
+
+Allowed Jira identifiers:
+
+* `sentinelone_threat_id`
+* `sentinelone_threat_url_id`
+
+Do not match SentinelOne coverage on:
+
+* Azure or Microsoft Sentinel incident IDs
+* Threat name
+* Timestamps
+* Client or site alone
+* Jira summary text
+* Fuzzy similarity
+
+Extra matched Jira tickets are Triaging. Missing exact matches are Mismatch.
+
+---
+
 # Wazuh Rules
 
 Current source:
@@ -389,6 +440,15 @@ This is expected behavior.
 
 Do not create placeholder alerts or clients.
 
+Wazuh uses correlation-aware coverage logic with WHB grouped source evidence.
+WHB `by_rule[].id` is exposed as `sample_alert_id`; it is representative
+grouped evidence and not every individual alert ID when the grouped count is
+greater than 1.
+
+Raw `full_log`, `data`, and other raw payloads must not be stored or
+displayed. Metadata drift is secondary and must not become the main failure
+state.
+
 ---
 
 # Securonix Rules
@@ -414,6 +474,11 @@ Current requirements:
 
 Securonix is raw incident-list style like SentinelOne, not count-only like
 Wazuh.
+
+Securonix currently uses compatibility/count-based coverage fields only. Do
+not claim real Securonix source-to-Jira correlation until Jira tickets
+reliably include stable Securonix `incidentId` or source incident URL
+evidence.
 
 Never store or display these Securonix fields:
 
@@ -470,6 +535,9 @@ Current assumption:
 Comparison logic depends on this assumption.
 
 Do not introduce aggregation logic unless requirements change.
+
+Do not introduce fuzzy matching unless explicitly approved after an evidence
+audit.
 
 ---
 
