@@ -322,7 +322,7 @@ Wazuh is currently the only tool using the correlation resilience flow. It is
 the first reference implementation of a future SOC pattern that can be
 extended to other tools later. SentinelOne now has exact-ID correlation, but
 does not use Wazuh's tenant-field and client-hint resilience flow. Securonix
-behavior remains compatibility/count based for now.
+now uses exact incident-ID correlation.
 
 Coverage is the primary Wazuh signal:
 
@@ -399,20 +399,45 @@ Jira integration:
 * Issue type: Security Incident
 * Client source: Tenant Name labels field
 
-Securonix uses raw incident-list comparison like SentinelOne. Incident records
-are compared against Jira tickets per client and are stored under generic
-`alerts` evidence fields for dashboard compatibility.
+Securonix uses exact incident-ID correlation between current SNYPR source
+incidents and Jira Security Incident tickets.
 
-Securonix currently uses compatibility/count-based coverage fields only. It
-does not yet have real source-to-Jira correlation. Real Securonix correlation
-should wait until Jira tickets reliably include a stable Securonix
-`incidentId` or source incident URL.
+Source identifiers used for matching:
+
+* `id`
+* `securonix_incident_id`
+* `securonix_incident_url`, using its `id=` query value
+
+Jira identifiers used for matching:
+
+* `customfield_10116` / `SCNX-Incident-ID`
+* `customfield_10120` / `Securonix Incident URL`, using its `id=` query value
+* Description fallback for the same safe labels
+
+Securonix does not match on:
+
+* Tenant or client labels alone
+* Policy name
+* Solr query
+* Timestamps
+* Account or resource names
+* Incident type
+* Priority, risk, or status
+* Jira summary text
+* Fuzzy similarity
+
+Matched Jira tickets are attributed to the matched source incident's client.
+The parsed Jira tenant/client is retained as strict metadata. If it differs
+from the matched source client, the ticket is marked with
+`client_metadata_drift`. Metadata drift is secondary evidence and is not a
+coverage failure by itself.
 
 Sensitive Securonix fields are excluded and must not be stored or displayed:
 
 * `violatorText`
 * `violatorId`
 * `solrquery`
+* Raw descriptions and raw payloads
 
 ---
 
@@ -564,8 +589,6 @@ Avoid duplicating configuration elsewhere.
 Future milestones:
 
 * Expand client normalization only through approved exact mappings
-* Add stable Securonix `incidentId` or source URL evidence to Jira ticket
-  templates before implementing Securonix source-to-Jira correlation
 * Consider moving tool-specific correlation into cleaner plugin-style modules
   if the comparator grows too large
 * Avoid fuzzy matching unless explicitly approved for a specific audited use

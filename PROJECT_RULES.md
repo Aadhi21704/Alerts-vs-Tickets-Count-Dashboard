@@ -46,6 +46,7 @@ The following items are considered completed and should not be reimplemented:
 * Jira Ticket ID drilldowns
 * Wazuh collector, Jira, comparator, and dashboard integration
 * Securonix collector, Jira, comparator, and dashboard integration
+* Securonix exact incident-ID Jira correlation
 * Polished FastAPI, Jinja, and CSS dashboard UI
 * Canonical read-only `/api/dashboard` endpoint
 * Disabled `/api/update` endpoint
@@ -475,16 +476,40 @@ Current requirements:
 Securonix is raw incident-list style like SentinelOne, not count-only like
 Wazuh.
 
-Securonix currently uses compatibility/count-based coverage fields only. Do
-not claim real Securonix source-to-Jira correlation until Jira tickets
-reliably include stable Securonix `incidentId` or source incident URL
-evidence.
+Securonix source-to-Jira correlation must use exact incident identifiers only.
+
+Allowed source identifiers:
+
+* `id`
+* `securonix_incident_id`
+* `id=` query value from `securonix_incident_url`
+
+Allowed Jira identifiers:
+
+* `customfield_10116` / `SCNX-Incident-ID`
+* `customfield_10120` / `Securonix Incident URL`
+* `id=` query value from the Jira Securonix incident URL
+* Description fallback for the same safe labels
+
+Do not match Securonix coverage on:
+
+* Tenant or client labels alone
+* Policy name
+* Solr query
+* Timestamps
+* Account or resource names
+* Incident type
+* Priority, risk, or status
+* Jira summary text
+* Fuzzy similarity
 
 Never store or display these Securonix fields:
 
 * `violatorText`
 * `violatorId`
 * `solrquery`
+* Raw descriptions
+* Raw payloads
 
 ---
 
@@ -523,6 +548,11 @@ NSIR
 Client source:
 
 Tenant Name labels field
+
+Safe correlation fields:
+
+* `customfield_10116` / `SCNX-Incident-ID`
+* `customfield_10120` / `Securonix Incident URL`
 
 ---
 

@@ -218,7 +218,16 @@ Responsibilities:
 * Query opened incidents in the configured 24-hour window
 * Apply allowed-client filtering
 * Normalize safe incident evidence records
+* Preserve safe Securonix source identifiers for exact-ID correlation
 * Exclude sensitive Securonix fields
+
+Safe Securonix source evidence includes:
+
+* `id` / `securonix_incident_id`
+* `securonix_incident_url`
+* Created and updated timestamps as supporting metadata only, not match keys
+* Status, priority, risk score, and incident type as supporting metadata only,
+  not match keys
 
 Sensitive fields that must not be stored:
 
@@ -267,7 +276,7 @@ Current responsibilities:
 * Source aggregation
 * Exact SentinelOne alias normalization before grouping
 * Exact SentinelOne source-to-Jira ID correlation
-* Raw Securonix incident-list comparison
+* Exact Securonix incident-ID source-to-Jira correlation
 * Wazuh coverage-first correlation comparison
 
 `compare_data()` accepts the configured SentinelOne client mapping. It applies
@@ -288,9 +297,13 @@ counts and correlated Jira tickets as the primary coverage signal. Strict
 tenant-field ticket counts and metadata drift are retained as secondary
 evidence.
 
-Securonix currently uses compatibility/count-based coverage fields only. Do
-not claim it has real source-to-Jira correlation until Jira tickets reliably
-include stable `incidentId` or source incident URL evidence.
+Securonix uses exact incident-ID correlation. It matches Jira tickets only
+when `securonix_incident_id` or `securonix_incident_url_id` exactly matches a
+current Securonix source incident identifier such as `id`,
+`securonix_incident_id`, or the `id=` value from `securonix_incident_url`.
+It does not match tenant labels alone, policy names, Solr queries, timestamps,
+account/resource names, incident type, priority/risk/status, summary text, or
+fuzzy similarity.
 
 SOC coverage language:
 
@@ -436,9 +449,8 @@ Displays:
 * Display-only evidence alignment
 
 For Wazuh only, the client page presents coverage-first insight and compact
-grouped source evidence from WHB. SentinelOne uses exact-ID ticket evidence
-instead. Securonix remains compatibility/count based and must not display fake
-correlation evidence.
+grouped source evidence from WHB. SentinelOne and Securonix use exact-ID
+ticket evidence instead.
 
 ---
 
