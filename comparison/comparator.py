@@ -161,6 +161,71 @@ def _sentinelone_status(
     return "Covered"
 
 
+def _extract_query_id(value):
+    if not isinstance(value, str):
+        return ""
+
+    for separator in ("?", "&"):
+        parts = value.split(separator)
+        value = "&".join(parts)
+
+    for part in value.split("&"):
+        key, separator, field_value = part.partition("=")
+
+        if (
+            separator
+            and key.strip().casefold() == "id"
+            and field_value.strip()
+        ):
+            return field_value.strip()
+
+    return ""
+
+
+def _securonix_source_identifiers(record):
+    identifiers = []
+
+    for field_name in (
+        "id",
+        "securonix_incident_id"
+    ):
+        identifier = _normalized_identifier(
+            record.get(field_name)
+        )
+
+        if identifier:
+            identifiers.append(identifier)
+
+    url_identifier = _normalized_identifier(
+        _extract_query_id(
+            record.get("securonix_incident_url")
+            or record.get("url")
+        )
+    )
+
+    if url_identifier:
+        identifiers.append(url_identifier)
+
+    return sorted(set(identifiers))
+
+
+def _securonix_ticket_identifiers(ticket):
+    identifiers = []
+
+    for field_name in (
+        "securonix_incident_id",
+        "securonix_incident_url_id"
+    ):
+        identifier = _normalized_identifier(
+            ticket.get(field_name)
+        )
+
+        if identifier:
+            identifiers.append(identifier)
+
+    return sorted(set(identifiers))
+
+
 def compare_data(
     sentinel_alerts,
     jira_tickets,
@@ -1012,6 +1077,14 @@ def compare_list_data(
     managed_clients=None
 ):
 
+    if source == "securonix":
+        return _compare_securonix_correlation_data(
+            records,
+            jira_tickets,
+            source,
+            managed_clients
+        )
+
     clients = {}
 
     for client, sources in (
@@ -1126,4 +1199,307 @@ def compare_list_data(
         "total_tickets": len(jira_tickets),
         **coverage_totals,
         "clients": result
+    }
+
+
+def _compare_securonix_correlation_data(
+    records,
+    jira_tickets,
+    source,
+    managed_clients=None
+):
+
+    clients = {}
+
+    for client, sources in (
+        managed_clients or {}
+    ).items():
+
+        client = client.strip()
+
+        if not client:
+            continue
+
+        clients[client] = {
+            "client": client,
+            "sources": set(sources),
+            "alerts": [],
+            "strict_tickets": [],
+            "correlated_tickets": [],
+            "matched_source_indexes": set()
+        }
+
+    source_index = {}
+
+    for record_index, record in enumerate(records):
+
+        client = record.get(
+            "client",
+            "Unknown"
+        ).strip()
+
+        if client not in clients:
+            clients[client] = {
+                "client": client,
+                "sources": set(),
+                "alerts": [],
+                "strict_tickets": [],
+                "correlated_tickets": [],
+                "matched_source_indexes": set()
+            }
+
+        clients[client]["sources"].add(
+            record.get(
+                "source",
+                source
+            )
+        )
+
+        clients[client]["alerts"].append({
+            **record,
+            "client": client
+        })
+
+        for identifier in _securonix_source_identifiers(
+            record
+        ):
+            source_index[identifier] = {
+                "index": record_index,
+                "client": client,
+                "record": record
+            }
+
+    unmapped_tickets = []
+
+    for ticket in jira_tickets:
+
+        strict_client = ticket.get(
+            "client",
+            "Unknown"
+        ).strip()
+
+        if strict_client not in clients:
+            clients[strict_client] = {
+                "client": strict_client,
+                "sources": {source},
+                "alerts": [],
+                "strict_tickets": [],
+                "correlated_tickets": [],
+                "matched_source_indexes": set()
+            }
+
+        strict_ticket = {
+            **ticket,
+            "client": strict_client,
+            "strict_client": strict_client
+        }
+
+        clients[strict_client][
+            "strict_tickets"
+        ].append(
+            strict_ticket
+        )
+
+        matched_source = None
+
+        ticket_identifiers = _securonix_ticket_identifiers(
+            ticket
+        )
+
+        for identifier in ticket_identifiers:
+            if identifier in source_index:
+                matched_source = source_index[
+                    identifier
+                ]
+                break
+
+        if not matched_source:
+            if ticket_identifiers:
+                unmapped_tickets.append(
+                    {
+                        **strict_ticket,
+                        "match_status":
+                            "securonix_evidence_unmatched"
+                    }
+                )
+
+            continue
+
+        matched_client = matched_source[
+            "client"
+        ]
+
+        if matched_client not in clients:
+            clients[matched_client] = {
+                "client": matched_client,
+                "sources": {source},
+                "alerts": [],
+                "strict_tickets": [],
+                "correlated_tickets": [],
+                "matched_source_indexes": set()
+            }
+
+        metadata_issues = list(
+            ticket.get(
+                "metadata_issues",
+                []
+            )
+            or []
+        )
+
+        if strict_client != matched_client:
+            metadata_issues.append(
+                "client_metadata_drift"
+            )
+
+        correlated_ticket = {
+            **ticket,
+            "client": matched_client,
+            "strict_client": strict_client,
+            "matched_source_client": matched_client,
+            "match_status":
+                "securonix_exact_id_match",
+            "metadata_issues":
+                sorted(set(metadata_issues))
+        }
+
+        clients[matched_client][
+            "correlated_tickets"
+        ].append(
+            correlated_ticket
+        )
+
+        clients[matched_client][
+            "matched_source_indexes"
+        ].add(
+            matched_source["index"]
+        )
+
+    result = []
+
+    for client in clients.values():
+
+        alert_count = len(
+            client["alerts"]
+        )
+        strict_ticket_count = len(
+            client["strict_tickets"]
+        )
+        correlated_ticket_count = len(
+            client["correlated_tickets"]
+        )
+        unique_matched_source_count = len(
+            client["matched_source_indexes"]
+        )
+        missing_ticket_count = max(
+            alert_count
+            - unique_matched_source_count,
+            0
+        )
+        extra_ticket_count = max(
+            correlated_ticket_count
+            - alert_count,
+            0
+        )
+        coverage_delta = (
+            correlated_ticket_count
+            - alert_count
+        )
+        metadata_drift_count = sum(
+            1
+            for ticket in client["correlated_tickets"]
+            if ticket.get("metadata_issues")
+        )
+        coverage_status = (
+            "Missing Tickets"
+            if missing_ticket_count > 0
+            else (
+                "Extra Tickets - Review"
+                if extra_ticket_count > 0
+                else "Covered"
+            )
+        )
+
+        result.append({
+            "client": client["client"],
+            "sources": sorted(
+                list(client["sources"])
+            ),
+            "alert_count": alert_count,
+            "ticket_count": correlated_ticket_count,
+            "strict_ticket_count":
+                strict_ticket_count,
+            "correlated_ticket_count":
+                correlated_ticket_count,
+            "unique_matched_source_count":
+                unique_matched_source_count,
+            "metadata_drift_count":
+                metadata_drift_count,
+            "coverage_status":
+                coverage_status,
+            "coverage_delta":
+                coverage_delta,
+            "missing_ticket_count":
+                missing_ticket_count,
+            "extra_ticket_count":
+                extra_ticket_count,
+            "status":
+                coverage_status,
+            "alerts":
+                client["alerts"],
+            "tickets":
+                client["correlated_tickets"],
+            "strict_tickets":
+                client["strict_tickets"]
+        })
+
+    result.sort(
+        key=lambda client: (
+            client["status"] == "Covered",
+            client["client"].casefold()
+        )
+    )
+
+    strict_total_tickets = sum(
+        client["strict_ticket_count"]
+        for client in result
+    )
+    correlated_total_tickets = sum(
+        client["correlated_ticket_count"]
+        for client in result
+    )
+    total_alerts = len(records)
+    coverage_delta_total = (
+        correlated_total_tickets
+        - total_alerts
+    )
+
+    return {
+        "total_alerts": total_alerts,
+        "total_tickets": correlated_total_tickets,
+        "strict_total_tickets": strict_total_tickets,
+        "correlated_total_tickets": correlated_total_tickets,
+        "metadata_drift_total":
+            sum(
+                client["metadata_drift_count"]
+                for client in result
+            ),
+        "coverage_delta_total":
+            coverage_delta_total,
+        "missing_ticket_total":
+            sum(
+                client["missing_ticket_count"]
+                for client in result
+            ),
+        "extra_ticket_total":
+            sum(
+                client["extra_ticket_count"]
+                for client in result
+            ),
+        "unmapped_ticket_count":
+            len(unmapped_tickets),
+        "unmapped_tickets":
+            unmapped_tickets,
+        "clients":
+            result
     }
