@@ -187,6 +187,8 @@ def fetch_securonix_incidents(
             incidents.append(
                 {
                     "id": item.get("incidentId"),
+                    "securonix_incident_id":
+                        item.get("incidentId"),
                     "client": client,
                     "created":
                         item.get("casecreatetime"),
@@ -206,7 +208,9 @@ def fetch_securonix_incidents(
                         item.get("mitre_tactic"),
                     "mitre_technique":
                         item.get("mitre_technique"),
-                    "url": item.get("url")
+                    "url": item.get("url"),
+                    "securonix_incident_url":
+                        item.get("url")
                 }
             )
 

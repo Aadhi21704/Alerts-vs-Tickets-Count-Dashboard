@@ -85,6 +85,12 @@ def _get_adf_text_with_links(node):
     if isinstance(node, str):
         return node
 
+    if isinstance(node, list):
+        return " ".join(
+            _get_adf_text_with_links(child)
+            for child in node
+        )
+
     if not isinstance(node, dict):
         return ""
 
@@ -164,6 +170,29 @@ _AZURE_OR_MICROSOFT_SENTINEL_PATTERN = re.compile(
     r"(?i)(portal\.azure\.com|Microsoft_Azure_Security_Insights|"
     r"Microsoft Sentinel|Azure Sentinel|Sentinel Incident|Incident URL)"
 )
+
+_SECURONIX_INCIDENT_ID_PATTERNS = [
+    re.compile(
+        r"(?i)\bSCNX\s*-\s*Incident\s*-\s*ID\b\s*[:=]?\s*"
+        r"([0-9A-Za-z._:-]{3,})"
+    ),
+    re.compile(
+        r"(?i)\bSecuronix\s+Incident\s+ID\b\s*[:=]?\s*"
+        r"([0-9A-Za-z._:-]{3,})"
+    ),
+    re.compile(
+        r"(?i)\bincidentId\b\s*[:=]?\s*"
+        r"([0-9A-Za-z._:-]{3,})"
+    )
+]
+
+_SECURONIX_INCIDENT_URL_PATTERN = re.compile(
+    r"(?i)https?://[^\s\])}]+(?:securonix|snypr)[^\s\])}]*"
+)
+
+_SECURONIX_INCIDENT_URL_FIELD = "customfield_10120"
+
+_SECURONIX_INCIDENT_ID_FIELD = "customfield_10116"
 
 
 def _clean_sentinelone_identifier(value):
@@ -253,6 +282,133 @@ def _extract_sentinelone_jira_evidence(summary, description):
         evidence[
             "non_sentinelone_evidence_type"
         ] = "azure_or_microsoft_sentinel"
+
+    return evidence
+
+
+def _clean_securonix_identifier(value):
+    if not isinstance(value, str):
+        return ""
+
+    return re.sub(
+        r"(?i)(Incident|URL|ID|Details)$",
+        "",
+        value.strip().strip(":;,.)]'\"[")
+    ).strip()
+
+
+def _extract_query_parameter(url, parameter_name):
+    if not isinstance(url, str):
+        return ""
+
+    match = re.search(
+        rf"(?i)(?:[?&]){re.escape(parameter_name)}=([^&#\s]+)",
+        url
+    )
+
+    if not match:
+        return ""
+
+    return _clean_securonix_identifier(
+        match.group(1)
+    )
+
+
+def _extract_securonix_jira_evidence(
+    summary,
+    description,
+    incident_id_field=None,
+    incident_url_field=None
+):
+    safe_text = " ".join(
+        value
+        for value in [
+            summary or "",
+            _get_adf_text_with_links(description),
+            _get_adf_text_with_links(incident_id_field),
+            _get_adf_text_with_links(incident_url_field)
+        ]
+        if value
+    )
+
+    incident_ids = []
+
+    direct_incident_id = _clean_securonix_identifier(
+        _get_adf_text_with_links(incident_id_field)
+    )
+
+    if direct_incident_id:
+        incident_ids.append(
+            direct_incident_id
+        )
+
+    for pattern in _SECURONIX_INCIDENT_ID_PATTERNS:
+        for match in pattern.finditer(safe_text):
+            incident_id = _clean_securonix_identifier(
+                match.group(1)
+            )
+
+            if incident_id:
+                incident_ids.append(incident_id)
+
+    incident_urls = []
+
+    for match in _SECURONIX_INCIDENT_URL_PATTERN.finditer(safe_text):
+        incident_url = match.group(0)
+
+        if "solr" in incident_url.casefold():
+            continue
+
+        incident_urls.append(incident_url)
+
+    unique_incident_ids = sorted(
+        set(incident_ids)
+    )
+    unique_incident_urls = sorted(
+        set(incident_urls)
+    )
+
+    incident_url_id = ""
+
+    for incident_url in unique_incident_urls:
+        incident_url_id = _extract_query_parameter(
+            incident_url,
+            "id"
+        )
+
+        if incident_url_id:
+            break
+
+    evidence = {
+        "securonix_incident_id":
+            unique_incident_ids[0]
+            if unique_incident_ids
+            else "",
+        "securonix_incident_url":
+            unique_incident_urls[0]
+            if unique_incident_urls
+            else "",
+        "securonix_incident_url_id":
+            incident_url_id,
+        "securonix_identifier_source": ""
+    }
+
+    if incident_id_field:
+        evidence[
+            "securonix_identifier_source"
+        ] = "custom_field"
+    elif unique_incident_ids:
+        evidence[
+            "securonix_identifier_source"
+        ] = "description"
+    elif incident_url_id:
+        evidence[
+            "securonix_identifier_source"
+        ] = (
+            "custom_field"
+            if incident_url_field
+            else "url"
+        )
 
     return evidence
 
@@ -872,6 +1028,9 @@ def fetch_securonix_jira_tickets(
         [
             "summary",
             "created",
+            "description",
+            _SECURONIX_INCIDENT_ID_FIELD,
+            _SECURONIX_INCIDENT_URL_FIELD,
             SECURONIX_JIRA_TENANT_FIELD
         ]
     )
@@ -887,6 +1046,16 @@ def fetch_securonix_jira_tickets(
         fields = issue.get(
             "fields",
             {}
+        )
+
+        description = fields.get(
+            "description",
+            {}
+        )
+
+        summary = fields.get(
+            "summary",
+            ""
         )
 
         tenant_values = fields.get(
@@ -920,15 +1089,22 @@ def fetch_securonix_jira_tickets(
                 "key": issue["key"],
                 "client": client,
                 "summary":
-                    fields.get(
-                        "summary",
-                        ""
-                    ),
+                    summary,
                 "created":
                     fields.get(
                         "created",
                         ""
+                    ),
+                **_extract_securonix_jira_evidence(
+                    summary,
+                    description,
+                    fields.get(
+                        _SECURONIX_INCIDENT_ID_FIELD
+                    ),
+                    fields.get(
+                        _SECURONIX_INCIDENT_URL_FIELD
                     )
+                )
             }
         )
 
