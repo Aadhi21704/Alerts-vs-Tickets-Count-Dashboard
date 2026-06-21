@@ -151,3 +151,24 @@ SECURONIX_INCIDENT_PAGE_SIZE = 100
 SECURONIX_VERIFY_SSL = True
 
 SECURONIX_JIRA_TENANT_FIELD = WAZUH_JIRA_TENANT_FIELD
+
+# Microsoft Sentinel
+MS_SENTINEL_INCIDENT_WINDOW_HOURS = 24
+
+MS_SENTINEL_API_VERSION = "2025-09-01"
+
+MS_SENTINEL_PAGE_SIZE = 1000
+
+MS_SENTINEL_CLIENTS = {
+    "ContractPodAi": {
+        "enabled": True,
+        "tenant_id_env": "MS_SENTINEL_CPAI_TENANT_ID",
+        "client_id_env": "MS_SENTINEL_CPAI_CLIENT_ID",
+        "client_secret_env": "MS_SENTINEL_CPAI_CLIENT_SECRET",
+        "subscription_id_env": "MS_SENTINEL_CPAI_SUBSCRIPTION_ID",
+        "resource_group_name_env": "MS_SENTINEL_CPAI_RESOURCE_GROUP",
+        "workspace_name_env": "MS_SENTINEL_CPAI_WORKSPACE_NAME",
+        "jira_tenant": "ContractPodAi",
+        "summary_aliases": ["CPAi"]
+    }
+}

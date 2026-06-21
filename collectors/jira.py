@@ -5,6 +5,8 @@ import requests
 
 from config import (
     JIRA_URL,
+    MS_SENTINEL_CLIENTS,
+    MS_SENTINEL_INCIDENT_WINDOW_HOURS,
     SECURONIX_ALLOWED_CLIENTS,
     SECURONIX_JIRA_TENANT_FIELD,
     SECURONIX_JIRA_WINDOW_HOURS,
@@ -193,6 +195,20 @@ _SECURONIX_INCIDENT_URL_PATTERN = re.compile(
 _SECURONIX_INCIDENT_URL_FIELD = "customfield_10120"
 
 _SECURONIX_INCIDENT_ID_FIELD = "customfield_10116"
+
+_MS_SENTINEL_INCIDENT_GUID_PATTERN = re.compile(
+    r"(?i)/incidents/([0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-"
+    r"[0-9a-f]{4}-[0-9a-f]{12})(?:$|[/?#])"
+)
+
+_MS_SENTINEL_GUID_PATTERN = re.compile(
+    r"(?i)\b[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-"
+    r"[0-9a-f]{4}-[0-9a-f]{12}\b"
+)
+
+_MS_SENTINEL_URL_PATTERN = re.compile(
+    r"(?i)https?://[^\s\])}<>\"|]+"
+)
 
 
 def _clean_sentinelone_identifier(value):
@@ -411,6 +427,194 @@ def _extract_securonix_jira_evidence(
         )
 
     return evidence
+
+
+def _clean_microsoft_sentinel_identifier(value):
+    if value is None:
+        return ""
+
+    if not isinstance(value, str):
+        value = str(value)
+
+    return value.strip().strip(":;,.)]'\"[")
+
+
+def _microsoft_sentinel_incident_guid_from_value(value):
+    if not isinstance(value, str):
+        return ""
+
+    decoded_value = value.replace(
+        "%2F",
+        "/"
+    ).replace(
+        "%2f",
+        "/"
+    )
+
+    match = _MS_SENTINEL_INCIDENT_GUID_PATTERN.search(
+        decoded_value
+    )
+
+    if match:
+        return match.group(1).lower()
+
+    matches = _MS_SENTINEL_GUID_PATTERN.findall(
+        decoded_value
+    )
+
+    if not matches:
+        return ""
+
+    return matches[-1].lower()
+
+
+def _microsoft_sentinel_table_value(parsed_fields, field_name):
+    value = _get_wazuh_table_value(
+        parsed_fields,
+        field_name
+    )
+
+    return _clean_microsoft_sentinel_identifier(
+        value
+    )
+
+
+def _extract_microsoft_sentinel_labeled_value(safe_text, label):
+    pattern = re.compile(
+        rf"(?i)\b{re.escape(label)}\b\s*[:=]?\s*"
+        r"(.+?)(?=\s+(?:Incident\s+ID|Incident\s+ARM\s+ID|"
+        r"Incident\s+URL|Created\s+Time\s*\(UTC\)|"
+        r"Last\s+Modified\s+Time\s*\(UTC\))\b|$)"
+    )
+
+    match = pattern.search(
+        safe_text
+    )
+
+    if not match:
+        return ""
+
+    return _clean_microsoft_sentinel_identifier(
+        match.group(1)
+    )
+
+
+def _extract_microsoft_sentinel_jira_evidence(description):
+    parsed_fields = _parse_adf_table_fields(
+        description
+    )
+
+    safe_text = _get_adf_text_with_links(
+        description
+    )
+
+    incident_id = (
+        _microsoft_sentinel_table_value(
+            parsed_fields,
+            "Incident ID"
+        )
+        or
+        _extract_microsoft_sentinel_labeled_value(
+            safe_text,
+            "Incident ID"
+        )
+    )
+
+    incident_arm_id = (
+        _microsoft_sentinel_table_value(
+            parsed_fields,
+            "Incident ARM ID"
+        )
+        or
+        _extract_microsoft_sentinel_labeled_value(
+            safe_text,
+            "Incident ARM ID"
+        )
+    )
+
+    incident_url = (
+        _microsoft_sentinel_table_value(
+            parsed_fields,
+            "Incident URL"
+        )
+        or
+        _extract_microsoft_sentinel_labeled_value(
+            safe_text,
+            "Incident URL"
+        )
+    )
+
+    if not incident_url:
+        for match in _MS_SENTINEL_URL_PATTERN.finditer(
+            safe_text
+        ):
+            candidate_url = match.group(0)
+
+            if (
+                "incident" in candidate_url.casefold()
+                or
+                "securityinsights" in candidate_url.casefold()
+                or
+                "portal.azure" in candidate_url.casefold()
+            ):
+                incident_url = candidate_url
+                break
+
+    created_time_utc = (
+        _microsoft_sentinel_table_value(
+            parsed_fields,
+            "Created Time(UTC)"
+        )
+        or
+        _extract_microsoft_sentinel_labeled_value(
+            safe_text,
+            "Created Time(UTC)"
+        )
+    )
+
+    last_modified_time_utc = (
+        _microsoft_sentinel_table_value(
+            parsed_fields,
+            "Last Modified Time(UTC)"
+        )
+        or
+        _extract_microsoft_sentinel_labeled_value(
+            safe_text,
+            "Last Modified Time(UTC)"
+        )
+    )
+
+    identifier_source = ""
+
+    if any(
+        [
+            incident_id,
+            incident_arm_id,
+            incident_url,
+            created_time_utc,
+            last_modified_time_utc
+        ]
+    ):
+        identifier_source = "description_adf"
+
+    return {
+        "microsoft_sentinel_incident_id": incident_id,
+        "microsoft_sentinel_incident_arm_id": incident_arm_id,
+        "microsoft_sentinel_incident_arm_guid":
+            _microsoft_sentinel_incident_guid_from_value(
+                incident_arm_id
+            ),
+        "microsoft_sentinel_incident_url": incident_url,
+        "microsoft_sentinel_incident_url_guid":
+            _microsoft_sentinel_incident_guid_from_value(
+                incident_url
+            ),
+        "microsoft_sentinel_created_time_utc": created_time_utc,
+        "microsoft_sentinel_last_modified_time_utc":
+            last_modified_time_utc,
+        "microsoft_sentinel_identifier_source":
+            identifier_source
+    }
 
 
 def _get_adf_text(node):
@@ -993,6 +1197,122 @@ def fetch_wazuh_jira_tickets_for_correlation(
                     "location"
                 ),
                 **client_resolution
+            }
+        )
+
+    return tickets
+
+
+def fetch_microsoft_sentinel_jira_tickets(
+    email,
+    api_token,
+    client_name="ContractPodAi",
+    max_pages=None
+):
+    client_config = MS_SENTINEL_CLIENTS.get(
+        client_name,
+        {}
+    )
+
+    jira_tenant = client_config.get(
+        "jira_tenant"
+    )
+
+    summary_aliases = client_config.get(
+        "summary_aliases",
+        []
+    )
+
+    if not jira_tenant:
+        raise ValueError(
+            f"Microsoft Sentinel Jira tenant not configured: {client_name}"
+        )
+
+    if not summary_aliases:
+        raise ValueError(
+            f"Microsoft Sentinel summary aliases not configured: {client_name}"
+        )
+
+    summary_alias = summary_aliases[0]
+
+    jql = f'''
+        project = NSIR
+        AND "Tenant Name" = "{jira_tenant}"
+        AND summary ~ "{summary_alias}"
+        AND created >= -{MS_SENTINEL_INCIDENT_WINDOW_HOURS}h
+        ORDER BY created DESC
+    '''.strip()
+
+    all_issues = _fetch_jira_issues(
+        email,
+        api_token,
+        jql,
+        [
+            "summary",
+            "created",
+            "status",
+            "description",
+            WAZUH_JIRA_TENANT_FIELD
+        ],
+        max_pages=max_pages,
+        log_pages=False
+    )
+
+    tickets = []
+
+    for issue in all_issues:
+        fields = issue.get(
+            "fields",
+            {}
+        )
+
+        summary = fields.get(
+            "summary",
+            ""
+        )
+
+        if summary_alias.casefold() not in summary.casefold():
+            continue
+
+        tenant_values = _normalize_tenant_values(
+            fields.get(WAZUH_JIRA_TENANT_FIELD)
+        )
+
+        if jira_tenant not in tenant_values:
+            continue
+
+        status = fields.get(
+            "status",
+            {}
+        )
+
+        if isinstance(status, dict):
+            status = status.get(
+                "name",
+                ""
+            )
+
+        description = fields.get(
+            "description",
+            {}
+        )
+
+        tickets.append(
+            {
+                "key": issue.get("key", ""),
+                "jira_key": issue.get("key", ""),
+                "client": client_name,
+                "strict_client": client_name,
+                "tenant_field": jira_tenant,
+                "summary": summary,
+                "created": fields.get(
+                    "created",
+                    ""
+                ),
+                "status": status or "",
+                **_extract_microsoft_sentinel_jira_evidence(
+                    description
+                )
             }
         )
 
