@@ -11,6 +11,7 @@ from logger import logger
 
 from config import (
     MANAGED_CLIENTS,
+    MS_SENTINEL_CLIENTS,
     REFRESH_INTERVAL_MINUTES,
     SENTINELONE_CLIENT_MAPPING,
     SENTINELONE_SOURCES,
@@ -30,7 +31,12 @@ from collectors.securonix import (
     fetch_securonix_incidents
 )
 
+from collectors.microsoft_sentinel import (
+    fetch_microsoft_sentinel_incidents
+)
+
 from collectors.jira import (
+    fetch_microsoft_sentinel_jira_tickets,
     fetch_jira_tickets,
     fetch_securonix_jira_tickets,
     fetch_wazuh_jira_tickets_for_correlation
@@ -333,6 +339,104 @@ def _collect_sentinelone(
         )
 
 
+def _collect_microsoft_sentinel(
+    previous_dashboard
+):
+    tool_name = "Microsoft Sentinel"
+    tool_key = "microsoft_sentinel"
+    started_at = _utc_now()
+
+    try:
+        jira_email = _require_env(
+            "JIRA_EMAIL"
+        )
+        jira_token = _require_env(
+            "JIRA_API_TOKEN"
+        )
+
+        sentinel_incidents = []
+        jira_tickets = []
+        managed_clients = {}
+
+        for client_name, client_config in MS_SENTINEL_CLIENTS.items():
+            if not client_config.get("enabled", False):
+                continue
+
+            client_incidents = fetch_microsoft_sentinel_incidents(
+                client_name
+            )
+
+            logger.info(
+                f"Microsoft Sentinel {client_name}: "
+                f"{len(client_incidents)} incidents retrieved"
+            )
+
+            sentinel_incidents.extend(
+                client_incidents
+            )
+
+            client_jira_tickets = fetch_microsoft_sentinel_jira_tickets(
+                jira_email,
+                jira_token,
+                client_name=client_name
+            )
+
+            logger.info(
+                f"Microsoft Sentinel Jira {client_name}: "
+                f"{len(client_jira_tickets)} tickets retrieved"
+            )
+
+            jira_tickets.extend(
+                client_jira_tickets
+            )
+
+            managed_clients[client_name] = [
+                tool_key
+            ]
+
+        microsoft_sentinel_result = compare_list_data(
+            sentinel_incidents,
+            jira_tickets,
+            source=tool_key,
+            managed_clients=managed_clients
+        )
+
+        finished_at = _utc_now()
+        microsoft_sentinel_result.update(
+            {
+                "tool": tool_name,
+                "tool_key": tool_key,
+                "collection": _tool_collection(
+                    "success",
+                    started_at,
+                    finished_at,
+                    _iso(finished_at)
+                )
+            }
+        )
+
+        return microsoft_sentinel_result
+
+    except Exception as exception:
+        finished_at = _utc_now()
+        error = _safe_error(
+            tool_name,
+            exception
+        )
+        logger.exception(
+            f"{tool_name} collection failed"
+        )
+
+        return _failed_tool(
+            tool_name,
+            tool_key,
+            started_at,
+            finished_at,
+            error,
+            previous_dashboard
+        )
+
+
 def _collect_wazuh(
     previous_dashboard
 ):
@@ -544,6 +648,9 @@ def main():
 
     tools = [
         _collect_sentinelone(
+            previous_dashboard
+        ),
+        _collect_microsoft_sentinel(
             previous_dashboard
         ),
         _collect_wazuh(
