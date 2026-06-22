@@ -127,6 +127,7 @@ collectors/
 ├─ sentinelone.py
 ├─ wazuh.py
 ├─ securonix.py
+├─ microsoft_sentinel.py
 ```
 
 Collectors must not:
@@ -241,6 +242,45 @@ Fully integrated
 
 ---
 
+## collectors/microsoft_sentinel.py
+
+Purpose:
+
+Collect Microsoft Sentinel incidents.
+
+Current enabled client:
+
+* ContractPodAi / CPAi
+
+Responsibilities:
+
+* Request Azure Management API tokens with client credentials
+* Cache and refresh tokens per configured client
+* Query Microsoft SecurityInsights incidents for the configured 24-hour window
+* Use `$top=1000`
+* Follow `nextLink` pagination
+* Normalize safe incident records
+* Preserve safe Microsoft Sentinel identifiers for exact-ID correlation
+
+Safe Microsoft Sentinel source evidence includes:
+
+* Incident name
+* Incident GUID from the final `/incidents/{guid}` ARM ID segment
+* Incident number
+* Incident ARM ID
+* Workspace name
+* Title, severity, and status as supporting metadata only
+* Created and updated timestamps as supporting metadata only
+
+Collectors must not store raw Sentinel payloads, entities, accounts, IPs,
+alert details, tokens, secrets, or auth headers in dashboard output.
+
+Status:
+
+Integrated for CPAi only
+
+---
+
 # comparison/
 
 Purpose:
@@ -277,6 +317,7 @@ Current responsibilities:
 * Exact SentinelOne alias normalization before grouping
 * Exact SentinelOne source-to-Jira ID correlation
 * Exact Securonix incident-ID source-to-Jira correlation
+* Exact Microsoft Sentinel incident-ID source-to-Jira correlation
 * Wazuh coverage-first correlation comparison
 
 `compare_data()` accepts the configured SentinelOne client mapping. It applies
@@ -304,6 +345,20 @@ current Securonix source incident identifier such as `id`,
 It does not match tenant labels alone, policy names, Solr queries, timestamps,
 account/resource names, incident type, priority/risk/status, summary text, or
 fuzzy similarity.
+
+Microsoft Sentinel uses exact-ID correlation for the `microsoft_sentinel`
+tool key. It matches Jira tickets only when exact Microsoft Sentinel evidence
+matches a current source incident:
+
+* Exact Incident ARM ID
+* Exact incident GUID from API incident name or final ARM incident segment
+* Exact incident GUID from Jira Incident URL
+* Numeric Incident ID only within the same configured client/workspace
+
+It does not match title, Jira summary alone, timestamps, tenant/client alone,
+severity, or fuzzy similarity. CPAi matching requires Jira Tenant Name
+`ContractPodAi` and summary containing `CPAi`; LeahAI uses the same Jira tenant
+and must not be included in CPAi matching.
 
 SOC coverage language:
 

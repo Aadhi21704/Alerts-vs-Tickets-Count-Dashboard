@@ -35,6 +35,10 @@
 * [x] Securonix exact incident-ID Jira correlation
 * [x] Securonix comparator integration
 * [x] Securonix dashboard integration
+* [x] Microsoft Sentinel CPAi collector integration
+* [x] Microsoft Sentinel CPAi Jira extraction
+* [x] Microsoft Sentinel CPAi exact-ID Jira correlation
+* [x] Microsoft Sentinel dashboard backend integration
 * [x] UI Phase 1 polished homepage
 * [x] UI Phase 2 polished tool and client pages
 * [x] Client evidence display ordering
@@ -251,6 +255,68 @@ Completed
 
 ---
 
+## Completed Microsoft Sentinel Work
+
+### Microsoft Sentinel CPAi Exact-ID Correlation
+
+Microsoft Sentinel is supported as a dashboard backend tool with tool key
+`microsoft_sentinel`.
+
+Current enabled client:
+
+* ContractPodAi / CPAi
+
+Implemented CPAi Jira mapping:
+
+* Jira Tenant Name = `ContractPodAi`
+* Jira summary must contain `CPAi`
+* LeahAI tickets also use Jira Tenant Name `ContractPodAi` and must not be
+  included in CPAi matching
+
+Implemented source collection:
+
+* Microsoft SecurityInsights incidents API
+* 24-hour window using `properties.createdTimeUtc`
+* `$top=1000`
+* `nextLink` pagination support
+* Per-client token generation, caching, and refresh
+* Safe normalized incident fields only
+
+Implemented Jira extraction:
+
+* Incident ID
+* Incident ARM ID
+* Incident ARM GUID
+* Incident URL
+* Incident URL GUID
+* Created Time(UTC)
+* Last Modified Time(UTC)
+
+Implemented matching keys:
+
+* Exact Incident ARM ID
+* Exact incident GUID from API incident name or final ARM incident segment
+* Exact incident GUID from Jira Incident URL
+* Numeric Incident ID only within the same configured client/workspace
+
+Explicitly not used for matching:
+
+* Title
+* Jira summary alone
+* Timestamp
+* Tenant or client alone
+* Severity
+* Fuzzy similarity
+
+Tokens, secrets, raw Jira descriptions, raw Sentinel payloads, entities,
+accounts, IPs, and alert details must not be stored or shown.
+
+Status:
+
+Completed for CPAi only
+
+---
+
 ### Wazuh Dashboard Integration
 
 Add Wazuh to:
@@ -278,6 +344,46 @@ Completed
 ---
 
 ## Medium Priority
+
+### Microsoft Sentinel Future Clients
+
+Pending approval and credentials:
+
+* Kshema_General_Insurance_Limited
+* LeahAI
+* FileJet
+
+LeahAI requires special care because its Jira Tenant Name is also
+`ContractPodAi`; Jira summary evidence must distinguish LeahAI from CPAi.
+
+Status:
+
+Pending
+
+---
+
+### Global Triaging-to-Review Logic Cleanup
+
+Review whether visible dashboard wording should consistently prefer
+`Review` language where SOC workflows need a softer label for extra-ticket
+states.
+
+Status:
+
+Pending
+
+---
+
+### Toggleable Filters and Search UI
+
+Add dashboard filters/search only after the core multi-tool coverage model is
+stable.
+
+Status:
+
+Pending
+
+---
 
 ### React Migration Planning
 

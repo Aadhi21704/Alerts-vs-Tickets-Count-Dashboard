@@ -17,6 +17,7 @@ where a Tool may include:
 * SentinelOne
 * Wazuh
 * Securonix
+* Microsoft Sentinel
 * Microsoft Defender
 * CrowdStrike
 * Future security platforms
@@ -438,6 +439,117 @@ Sensitive Securonix fields are excluded and must not be stored or displayed:
 * `violatorId`
 * `solrquery`
 * Raw descriptions and raw payloads
+
+---
+
+## Microsoft Sentinel
+
+Status:
+
+Integrated for the approved CPAi client only.
+
+Tool key:
+
+`microsoft_sentinel`
+
+Current enabled client:
+
+* ContractPodAi / CPAi
+
+Pending future Microsoft Sentinel clients:
+
+* Kshema_General_Insurance_Limited
+* LeahAI
+* FileJet
+
+### CPAi Jira Mapping
+
+CPAi Jira tickets are selected using both Jira tenant and summary evidence:
+
+* Jira Tenant Name = `ContractPodAi`
+* Jira summary must contain `CPAi`
+
+This summary rule is required because LeahAI tickets also use Jira Tenant
+Name `ContractPodAi`. LeahAI tickets must not be included in CPAi matching.
+
+### Microsoft Sentinel Authentication
+
+Each Microsoft Sentinel client has its own Azure application and workspace
+configuration:
+
+* tenant ID
+* client ID
+* client secret
+* subscription ID
+* resource group name
+* workspace name
+
+The collector requests an Azure Management API token using client credentials.
+Observed token lifetime is about 3599 seconds. Tokens are generated, cached,
+and refreshed per configured client. Tokens and secrets must never be stored
+in `latest.json`.
+
+### Microsoft Sentinel Source Collection
+
+The collector uses the Microsoft SecurityInsights incidents API.
+
+Current behavior:
+
+* 24-hour incident window using `properties.createdTimeUtc`
+* `$top=1000`
+* `properties/createdTimeUtc desc` ordering
+* Follows `nextLink` pagination
+* Stores only safe normalized fields
+
+Safe source fields include incident name, incident GUID, incident number,
+incident ARM ID, workspace name, title, severity, status, created/updated
+times, optional activity times, and optional alert count. Raw Sentinel
+payloads, entities, accounts, IPs, alert details, tokens, and secrets must
+not be stored or displayed.
+
+The incident GUID must be extracted from the final `/incidents/{guid}` ARM ID
+segment. The first GUID in an ARM ID can be the subscription ID and must not
+be used as the incident GUID.
+
+### Microsoft Sentinel Jira Extraction
+
+CPAi Jira extraction reads safe identifiers from Jira description ADF:
+
+* Incident ID
+* Incident ARM ID
+* Incident ARM GUID
+* Incident URL
+* Incident URL GUID
+* Created Time(UTC)
+* Last Modified Time(UTC)
+
+Raw Jira descriptions are not stored in dashboard output.
+
+### Microsoft Sentinel Exact-ID Correlation
+
+Microsoft Sentinel uses exact source-to-Jira correlation.
+
+Matching priority:
+
+* Exact Incident ARM ID
+* Exact incident GUID from API incident name or final ARM incident segment
+* Exact incident GUID from Jira Incident URL
+* Numeric Incident ID only within the same configured client/workspace
+
+Microsoft Sentinel does not match on:
+
+* Title
+* Jira summary alone
+* Timestamp
+* Tenant or client alone
+* Severity
+* Fuzzy similarity
+
+Coverage behavior:
+
+* Missing exact source-to-Jira matches produce Mismatch / Missing Tickets.
+* Extra matched Jira tickets produce Triaging / Extra Tickets - Review.
+* Equal exact-ID coverage produces Equal / Covered.
 
 ---
 
