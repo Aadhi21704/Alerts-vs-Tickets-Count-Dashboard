@@ -54,7 +54,7 @@
     <section class="page-hero
         {% if display_status == 'Equal' %}
             page-hero--equal
-        {% elif display_status == 'Triaging' %}
+        {% elif display_status == 'Review' %}
             page-hero--warning
         {% else %}
             page-hero--mismatch
@@ -77,7 +77,7 @@
             <span class="status-badge
                 {% if display_status == 'Equal' %}
                     status-badge--equal
-                {% elif display_status == 'Triaging' %}
+                {% elif display_status == 'Review' %}
                     status-badge--warning
                 {% else %}
                     status-badge--mismatch
@@ -117,7 +117,8 @@
                 {{ client.extra_ticket_count }} extra Jira tickets found
             </span>
             <span class="insight-helper">
-                Verify triage, escalation, duplicate, or stale-ticket behavior.
+                Review source delay, pagination/window mismatch, duplicates,
+                stale tickets, or real triage.
             </span>
             {% endif %}
             {% if (

@@ -107,9 +107,9 @@ def build_soc_display(
         display_status = "Mismatch"
     elif (
         extra_ticket_count > 0
-        or coverage_status == "Extra Tickets - Review"
+        or coverage_status == "Review"
     ):
-        display_status = "Triaging"
+        display_status = "Review"
     else:
         display_status = "Equal"
 
@@ -173,7 +173,7 @@ def build_tool_context(tool):
         1
         for client in clients
         if client.get("tool_display_status", client.get("status"))
-        == "Triaging"
+        == "Review"
     )
 
     alert_count = tool.get(
@@ -235,7 +235,6 @@ def build_tool_context(tool):
         "client_count": len(clients),
         "mismatch_count": mismatch_count,
         "warning_count": warning_count,
-        "triaging_count": warning_count,
         "review_count": mismatch_count + warning_count,
         "tool_display_status": soc_display[
             "tool_display_status"
@@ -392,8 +391,12 @@ def dashboard(request: Request):
         tool["mismatch_count"]
         for tool in tools
     )
-    triaging_count = sum(
-        tool.get("triaging_count", 0)
+    review_only_count = sum(
+        max(
+            tool.get("review_count", 0)
+            - tool.get("mismatch_count", 0),
+            0
+        )
         for tool in tools
     )
     total_delta = sum(
@@ -474,8 +477,8 @@ def dashboard(request: Request):
         "total_delta_display":
             total_delta_display,
         "mismatch_count": mismatch_count,
-        "triaging_count": triaging_count,
-        "review_count": mismatch_count + triaging_count,
+        "review_count": mismatch_count + review_only_count,
+        "review_only_count": review_only_count,
         "affected_tools": affected_tools,
         "affected_clients": affected_clients,
         "priority_issue": (
@@ -493,8 +496,8 @@ def dashboard(request: Request):
         "Mismatch"
         if mismatch_count
         else (
-            "Triaging"
-            if triaging_count
+            "Review"
+            if review_only_count
             else "Equal"
         )
     )

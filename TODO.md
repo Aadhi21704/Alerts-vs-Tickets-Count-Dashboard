@@ -159,7 +159,8 @@ Implemented behavior:
   `-2`.
 * Equal coverage displays `0`, not `+0`.
 * Extra tickets are communicated as `x extra tickets` and should be reviewed
-  for triage, escalation, duplicates, or stale-ticket behavior.
+  for source API delay, pagination/window mismatch, Jira/source refresh timing,
+  duplicates, stale tickets, or real triage.
 * WHB grouped `by_rule[].id` is exposed as `sample_alert_id`.
 * `sample_alert_id` is representative grouped evidence and not every
   individual alert ID when the row count is greater than 1.
@@ -197,7 +198,7 @@ Explicitly not used for matching:
 Coverage behavior:
 
 * Missing exact matches become Mismatch / Missing Tickets.
-* Extra matched Jira tickets become Triaging / Extra Tickets - Review.
+* Extra matched Jira tickets become Review.
 * Equal exact-ID coverage is Equal / Covered.
 * Metadata drift remains secondary evidence.
 
@@ -242,7 +243,7 @@ Explicitly not used for matching:
 Coverage behavior:
 
 * Missing exact matches become Mismatch / Missing Tickets.
-* Extra matched Jira tickets become Triaging / Extra Tickets - Review.
+* Extra matched Jira tickets become Review.
 * Equal exact-ID coverage is Equal / Covered.
 * Metadata drift remains secondary evidence.
 
@@ -362,15 +363,15 @@ Pending
 
 ---
 
-### Global Triaging-to-Review Logic Cleanup
+### Global Review Status Wording
 
-Review whether visible dashboard wording should consistently prefer
-`Review` language where SOC workflows need a softer label for extra-ticket
-states.
+Visible dashboard wording now uses `Review` for extra-ticket states. Future
+work can refine the supporting copy after more operational evidence is
+collected.
 
 Status:
 
-Pending
+Completed
 
 ---
 
@@ -594,7 +595,7 @@ Current active development focus:
 
 1. Stable dashboard release `dashboard-ui-v1.1`
 2. Stabilize the canonical API and data model across all integrated tools
-3. Keep coverage labels consistent: Equal, Mismatch, Triaging
+3. Keep coverage labels consistent: Equal, Mismatch, Review
 4. React migration planning
 5. Optional charts and polish
 

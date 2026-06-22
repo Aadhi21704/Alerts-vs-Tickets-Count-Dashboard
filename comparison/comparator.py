@@ -10,7 +10,7 @@ def _coverage_status(
         return "Missing Tickets"
 
     if ticket_count > alert_count:
-        return "Extra Tickets - Review"
+        return "Review"
 
     return "Covered"
 
@@ -156,7 +156,7 @@ def _sentinelone_status(
         return "Missing Tickets"
 
     if extra_ticket_count > 0:
-        return "Extra Tickets - Review"
+        return "Review"
 
     return "Covered"
 
@@ -522,7 +522,7 @@ def _compare_microsoft_sentinel_correlation_data(
             "Missing Tickets"
             if missing_ticket_count > 0
             else (
-                "Extra Tickets - Review"
+                "Review"
                 if extra_ticket_count > 0
                 else "Covered"
             )
@@ -1805,7 +1805,7 @@ def _compare_securonix_correlation_data(
             "Missing Tickets"
             if missing_ticket_count > 0
             else (
-                "Extra Tickets - Review"
+                "Review"
                 if extra_ticket_count > 0
                 else "Covered"
             )

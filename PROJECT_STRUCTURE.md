@@ -364,8 +364,9 @@ SOC coverage language:
 
 * Covered / Equal: alert coverage is complete
 * Missing Tickets / Mismatch: source alerts lack Jira coverage
-* Extra Tickets / Triaging: Jira has more tickets than source alerts and needs
-  triage, escalation, duplicate, or stale-ticket review
+* Review: Jira has more tickets than source alerts and needs review for source
+  API delay, pagination/window mismatch, Jira/source refresh timing,
+  duplicates, stale tickets, or real triage
 
 Coverage deltas are `correlated_ticket_count - alert_count`. Equal coverage
 is `0`, missing tickets are negative values, and extra tickets are reported

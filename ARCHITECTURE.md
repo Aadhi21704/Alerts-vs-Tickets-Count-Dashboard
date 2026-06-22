@@ -135,8 +135,9 @@ The dashboard uses coverage-first SOC labels across tools:
 
 * Equal means source alert or incident coverage is balanced with Jira tickets.
 * Mismatch means source alerts or incidents are missing Jira ticket coverage.
-* Triaging means extra Jira tickets exist and should be reviewed for triage,
-  escalation, duplicate, or stale-ticket behavior.
+* Review means extra Jira tickets exist and should be reviewed for source API
+  delay, pagination/window mismatch, Jira/source refresh timing, duplicates,
+  stale tickets, or real triage.
 
 Delta display rules:
 
@@ -224,7 +225,7 @@ coverage failure by itself.
 SentinelOne coverage behavior:
 
 * Missing exact source-to-Jira matches produce Mismatch / Missing Tickets.
-* Extra matched Jira tickets produce Triaging / Extra Tickets - Review.
+* Extra matched Jira tickets produce Review.
 * Equal exact-ID coverage produces Equal / Covered.
 
 ### SentinelOne Client Normalization
@@ -341,8 +342,9 @@ Wazuh statuses:
 * Equal / Covered means source alert coverage is complete.
 * Mismatch / Missing Tickets means source alerts exist without matching Jira
   coverage.
-* Triaging / Extra Tickets means Jira tickets exceed source alerts and should
-  be reviewed for triage, escalation, duplicate, or stale-ticket behavior.
+* Review means Jira tickets exceed source alerts and should be reviewed for
+  source API delay, pagination/window mismatch, Jira/source refresh timing,
+  duplicates, stale tickets, or real triage.
 
 Wazuh delta semantics:
 
@@ -548,7 +550,7 @@ Microsoft Sentinel does not match on:
 Coverage behavior:
 
 * Missing exact source-to-Jira matches produce Mismatch / Missing Tickets.
-* Extra matched Jira tickets produce Triaging / Extra Tickets - Review.
+* Extra matched Jira tickets produce Review.
 * Equal exact-ID coverage produces Equal / Covered.
 
 ---

@@ -13,7 +13,7 @@
     <section class="status-hero
         {% if dashboard.status == 'Equal' %}
             status-hero--clear
-        {% elif dashboard.status == 'Triaging' %}
+        {% elif dashboard.status == 'Review' %}
             status-hero--warning
         {% else %}
             status-hero--attention
@@ -27,8 +27,8 @@
                 <h1>
                     {% if dashboard.status == "Equal" %}
                         ALL CLEAR
-                    {% elif dashboard.status == "Triaging" %}
-                        TRIAGING
+                    {% elif dashboard.status == "Review" %}
+                        REVIEW
                     {% else %}
                         ACTION REQUIRED
                     {% endif %}
@@ -37,10 +37,11 @@
                     {% if dashboard.status == "Equal" %}
                         Alert and Jira ticket counts are
                         reconciled across all monitored tools.
-                    {% elif dashboard.status == "Triaging" %}
-                        {{ dashboard.triaging_count }} client
-                        review item{% if dashboard.triaging_count != 1 %}s{% endif %}
-                        may reflect triage, escalation, duplicate, or stale-ticket behavior.
+                    {% elif dashboard.status == "Review" %}
+                        {{ dashboard.review_only_count }} client
+                        review item{% if dashboard.review_only_count != 1 %}s{% endif %}
+                        may reflect source delay, pagination/window mismatch,
+                        duplicates, stale tickets, or real triage.
                     {% else %}
                         {{ dashboard.mismatch_count }} client
                         reconciliation issue{% if dashboard.mismatch_count != 1 %}s{% endif %}
@@ -51,7 +52,7 @@
             <span class="status-badge
                 {% if dashboard.status == 'Equal' %}
                     status-badge--equal
-                {% elif dashboard.status == 'Triaging' %}
+                {% elif dashboard.status == 'Review' %}
                     status-badge--warning
                 {% else %}
                     status-badge--mismatch
@@ -132,7 +133,7 @@
     <section class="priority-card
         {% if dashboard.priority_issue %}
             priority-card--attention
-        {% elif dashboard.status == 'Triaging' %}
+        {% elif dashboard.status == 'Review' %}
             priority-card--warning
         {% else %}
             priority-card--clear
@@ -149,8 +150,8 @@
                     <span aria-hidden="true">→</span>
                     {{ dashboard.priority_issue.client }}
                 </h2>
-                {% elif dashboard.status == "Triaging" %}
-                <h2>Triage review recommended</h2>
+                {% elif dashboard.status == "Review" %}
+                <h2>Review recommended</h2>
                 {% else %}
                 <h2>No reconciliation gaps detected</h2>
                 {% endif %}
@@ -158,7 +159,7 @@
             <span class="status-badge
                 {% if dashboard.priority_issue %}
                     status-badge--mismatch
-                {% elif dashboard.status == 'Triaging' %}
+                {% elif dashboard.status == 'Review' %}
                     status-badge--warning
                 {% else %}
                     status-badge--equal
@@ -166,8 +167,8 @@
             ">
                 {% if dashboard.priority_issue %}
                     Action Required
-                {% elif dashboard.status == "Triaging" %}
-                    Triaging
+                {% elif dashboard.status == "Review" %}
+                    Review
                 {% else %}
                     All Clear
                 {% endif %}
@@ -209,9 +210,10 @@
         </div>
         {% else %}
         <p class="priority-card__message">
-            {% if dashboard.status == "Triaging" %}
+            {% if dashboard.status == "Review" %}
                 Extra Jira tickets exist without missing alert coverage.
-                Review triage, escalation, duplicate, or stale-ticket behavior.
+                Review source delay, pagination/window mismatch, duplicates,
+                stale tickets, or real triage.
             {% else %}
                 No client requires immediate investigation.
             {% endif %}
@@ -234,7 +236,7 @@
             <article class="tool-health-card
                 {% if tool.tool_display_status == 'Equal' %}
                     tool-health-card--equal
-                {% elif tool.tool_display_status == 'Triaging' %}
+                {% elif tool.tool_display_status == 'Review' %}
                     tool-health-card--warning
                 {% else %}
                     tool-health-card--mismatch
@@ -245,7 +247,7 @@
                     <span class="status-badge
                         {% if tool.tool_display_status == 'Equal' %}
                             status-badge--equal
-                        {% elif tool.tool_display_status == 'Triaging' %}
+                        {% elif tool.tool_display_status == 'Review' %}
                             status-badge--warning
                         {% else %}
                             status-badge--mismatch

@@ -257,8 +257,9 @@ Dashboard status labels should use coverage-first SOC semantics:
 
 * Equal means source alert or incident coverage is balanced with Jira tickets.
 * Mismatch means source alerts or incidents are missing Jira tickets.
-* Triaging means extra Jira tickets exist and need review for triage,
-  escalation, duplicates, or stale-ticket behavior.
+* Review means extra Jira tickets exist and need review for source API delay,
+  pagination/window mismatch, Jira/source refresh timing, duplicates, stale
+  tickets, or real triage.
 
 Delta display rules:
 
@@ -406,7 +407,7 @@ Do not match SentinelOne coverage on:
 * Jira summary text
 * Fuzzy similarity
 
-Extra matched Jira tickets are Triaging. Missing exact matches are Mismatch.
+Extra matched Jira tickets are Review. Missing exact matches are Mismatch.
 
 ---
 

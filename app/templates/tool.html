@@ -15,7 +15,7 @@
     <section class="page-hero
         {% if tool.tool_display_status == 'Equal' %}
             page-hero--equal
-        {% elif tool.tool_display_status == 'Triaging' %}
+        {% elif tool.tool_display_status == 'Review' %}
             page-hero--warning
         {% else %}
             page-hero--mismatch
@@ -34,7 +34,7 @@
             <span class="status-badge
                 {% if tool.tool_display_status == 'Equal' %}
                     status-badge--equal
-                {% elif tool.tool_display_status == 'Triaging' %}
+                {% elif tool.tool_display_status == 'Review' %}
                     status-badge--warning
                 {% else %}
                     status-badge--mismatch
@@ -101,7 +101,8 @@
             {% endif %}
             {% if tool.extra_ticket_total | default(0) > 0 %}
             <span class="insight-helper">
-                Review triage, escalation, duplicate, or stale-ticket behavior.
+                Review source delay, pagination/window mismatch, duplicates,
+                stale tickets, or real triage.
             </span>
             {% endif %}
         </div>
@@ -126,7 +127,7 @@
             <article class="client-status-row
                 {% if client.tool_display_status == 'Equal' %}
                     client-status-row--equal
-                {% elif client.tool_display_status == 'Triaging' %}
+                {% elif client.tool_display_status == 'Review' %}
                     client-status-row--warning
                 {% else %}
                     client-status-row--mismatch
@@ -180,7 +181,7 @@
                 <span class="status-badge
                     {% if client.tool_display_status == 'Equal' %}
                         status-badge--equal
-                    {% elif client.tool_display_status == 'Triaging' %}
+                    {% elif client.tool_display_status == 'Review' %}
                         status-badge--warning
                     {% else %}
                         status-badge--mismatch
@@ -199,7 +200,7 @@
                 >
                     {% if client.tool_display_status == "Mismatch" %}
                         Investigate
-                    {% elif client.tool_display_status == "Triaging" %}
+                    {% elif client.tool_display_status == "Review" %}
                         Review
                     {% else %}
                         View
