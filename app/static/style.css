@@ -357,10 +357,18 @@ body {
     margin-bottom: 22px;
 }
 
-.summary-card {
+.summary-card,
+.priority-card,
+.tool-health-card,
+.dashboard-filters,
+.empty-panel,
+.evidence-panel {
     background: #101c2e;
     border: 1px solid #25364d;
     border-radius: 12px;
+}
+
+.summary-card {
     padding: 20px 22px;
 }
 
@@ -379,13 +387,6 @@ body {
 
 .summary-card--warning {
     border-bottom: 3px solid #f59e0b;
-}
-
-.priority-card,
-.tool-health-card {
-    background: #101c2e;
-    border: 1px solid #25364d;
-    border-radius: 12px;
 }
 
 .priority-card {
@@ -461,9 +462,13 @@ body {
     border-color: #60a5fa;
 }
 
-.action-button--secondary {
+.action-button--secondary,
+.filter-clear-button {
     background: #172a45;
     border-color: #31527c;
+}
+
+.action-button--secondary {
     box-sizing: border-box;
     margin-top: 20px;
     width: 100%;
@@ -599,13 +604,6 @@ body {
     color: #fbbf24;
 }
 
-.dashboard-filters {
-    background: #101c2e;
-    border: 1px solid #25364d;
-    border-radius: 12px;
-    margin-bottom: 22px;
-}
-
 .dashboard-filters summary {
     align-items: center;
     cursor: pointer;
@@ -614,6 +612,10 @@ body {
     justify-content: space-between;
     list-style: none;
     padding: 14px 18px;
+}
+
+.dashboard-filters {
+    margin-bottom: 22px;
 }
 
 .dashboard-filters summary::-webkit-details-marker {
@@ -694,7 +696,6 @@ body {
 }
 
 .filter-clear-button {
-    background: #172a45;
     border: 1px solid #31527c;
     border-radius: 8px;
     color: #dce8f7;
@@ -1136,11 +1137,6 @@ body {
         repeat(3, minmax(0, 1fr));
 }
 
-.row-metrics--wazuh {
-    grid-template-columns:
-        repeat(3, minmax(0, 1fr));
-}
-
 .row-metrics strong {
     font-size: 1rem;
 }
@@ -1150,8 +1146,6 @@ body {
 }
 
 .empty-panel {
-    background: #101c2e;
-    border: 1px solid #25364d;
     border-radius: 10px;
     color: #8ea2bd;
     padding: 24px;
@@ -1170,9 +1164,6 @@ body {
 }
 
 .evidence-panel {
-    background: #101c2e;
-    border: 1px solid #25364d;
-    border-radius: 12px;
     min-width: 0;
     padding: 22px;
 }
@@ -1401,8 +1392,7 @@ body {
         grid-row: auto;
     }
 
-    .row-metrics,
-    .row-metrics--wazuh {
+    .row-metrics {
         grid-template-columns:
             repeat(3, minmax(0, 1fr));
     }

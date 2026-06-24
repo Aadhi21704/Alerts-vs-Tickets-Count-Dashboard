@@ -130,13 +130,7 @@
                         <strong>{{ client.alert_count }}</strong>
                     </div>
                     <div>
-                        <span>
-                            {% if client.correlated_ticket_count is defined %}
-                                Tickets
-                            {% else %}
-                                Tickets
-                            {% endif %}
-                        </span>
+                        <span>Tickets</span>
                         <strong>{{ client.ticket_count }}</strong>
                     </div>
                     {% if client.strict_ticket_count is defined %}
