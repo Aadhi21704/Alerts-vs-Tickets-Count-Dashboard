@@ -10,15 +10,7 @@
 </head>
 <body class="dashboard-page">
 <main class="container dashboard-shell">
-    <section class="status-hero
-        {% if dashboard.status == 'Equal' %}
-            status-hero--clear
-        {% elif dashboard.status == 'Review' %}
-            status-hero--warning
-        {% else %}
-            status-hero--attention
-        {% endif %}
-    ">
+    <section class="status-hero {{ dashboard.status_hero_class }}">
         <div class="status-hero__headline">
             <div>
                 <p class="dashboard-eyebrow">
@@ -49,15 +41,7 @@
                     {% endif %}
                 </p>
             </div>
-            <span class="status-badge
-                {% if dashboard.status == 'Equal' %}
-                    status-badge--equal
-                {% elif dashboard.status == 'Review' %}
-                    status-badge--warning
-                {% else %}
-                    status-badge--mismatch
-                {% endif %}
-            ">
+            <span class="status-badge {{ dashboard.status_badge_class }}">
                 {{ dashboard.status }}
             </span>
         </div>
@@ -130,15 +114,7 @@
         </article>
     </section>
 
-    <section class="priority-card
-        {% if dashboard.priority_issue %}
-            priority-card--attention
-        {% elif dashboard.status == 'Review' %}
-            priority-card--warning
-        {% else %}
-            priority-card--clear
-        {% endif %}
-    ">
+    <section class="priority-card {{ dashboard.priority_card_class }}">
         <div class="section-heading">
             <div>
                 <p class="dashboard-eyebrow">
@@ -156,22 +132,8 @@
                 <h2>No reconciliation gaps detected</h2>
                 {% endif %}
             </div>
-            <span class="status-badge
-                {% if dashboard.priority_issue %}
-                    status-badge--mismatch
-                {% elif dashboard.status == 'Review' %}
-                    status-badge--warning
-                {% else %}
-                    status-badge--equal
-                {% endif %}
-            ">
-                {% if dashboard.priority_issue %}
-                    Action Required
-                {% elif dashboard.status == "Review" %}
-                    Review
-                {% else %}
-                    All Clear
-                {% endif %}
+            <span class="status-badge {{ dashboard.priority_badge_class }}">
+                {{ dashboard.priority_badge_text }}
             </span>
         </div>
 
@@ -289,15 +251,7 @@
 
         <div class="tool-health-grid">
             {% for tool in tools %}
-            <article class="tool-health-card
-                {% if tool.tool_display_status == 'Equal' %}
-                    tool-health-card--equal
-                {% elif tool.tool_display_status == 'Review' %}
-                    tool-health-card--warning
-                {% else %}
-                    tool-health-card--mismatch
-                {% endif %}
-            "
+            <article class="tool-health-card {{ tool.tool_health_card_class }}"
                 data-filter-card
                 data-filter-tool="{{ tool.tool_key }}"
                 data-filter-tool-name="{{ tool.tool | lower }}"
@@ -307,15 +261,7 @@
             >
                 <div class="tool-health-card__header">
                     <h3>{{ tool.tool }}</h3>
-                    <span class="status-badge
-                        {% if tool.tool_display_status == 'Equal' %}
-                            status-badge--equal
-                        {% elif tool.tool_display_status == 'Review' %}
-                            status-badge--warning
-                        {% else %}
-                            status-badge--mismatch
-                        {% endif %}
-                    ">
+                    <span class="status-badge {{ tool.status_badge_class }}">
                         {{ tool.tool_display_status }}
                     </span>
                 </div>

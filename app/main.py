@@ -92,6 +92,75 @@ def first_present(record, field_names):
     return ""
 
 
+def status_tone(status):
+    if status == "Equal":
+        return "equal"
+
+    if status == "Review":
+        return "warning"
+
+    return "mismatch"
+
+
+def status_display_fields(status):
+    tone = status_tone(
+        status
+    )
+
+    return {
+        "status_tone": tone,
+        "status_badge_class":
+            f"status-badge--{tone}",
+        "page_hero_class":
+            f"page-hero--{tone}",
+        "tool_health_card_class":
+            f"tool-health-card--{tone}",
+        "client_status_row_class":
+            f"client-status-row--{tone}"
+    }
+
+
+def dashboard_hero_class(status):
+    if status == "Equal":
+        return "status-hero--clear"
+
+    if status == "Review":
+        return "status-hero--warning"
+
+    return "status-hero--attention"
+
+
+def priority_card_fields(status, priority_issue):
+    if priority_issue:
+        return {
+            "priority_card_class":
+                "priority-card--attention",
+            "priority_badge_class":
+                "status-badge--mismatch",
+            "priority_badge_text":
+                "Action Required"
+        }
+
+    if status == "Review":
+        return {
+            "priority_card_class":
+                "priority-card--warning",
+            "priority_badge_class":
+                "status-badge--warning",
+            "priority_badge_text":
+                "Review"
+        }
+
+    return {
+        "priority_card_class":
+            "priority-card--clear",
+        "priority_badge_class":
+            "status-badge--equal",
+        "priority_badge_text":
+            "All Clear"
+    }
+
+
 def timestamp_fields(record):
     if record.get("_record_type") == "ticket":
         return (
@@ -677,7 +746,10 @@ def build_tool_context(tool):
         ],
         "status": soc_display[
             "tool_display_status"
-        ]
+        ],
+        **status_display_fields(
+            soc_display["tool_display_status"]
+        )
     }
 
     if not has_correlation_ui:
@@ -769,6 +841,10 @@ def build_client_context(client, tool_key=""):
         extra_ticket_count=extra_ticket_count
     )
 
+    display_status = soc_display[
+        "tool_display_status"
+    ]
+
     return {
         **client,
         "alert_count": alert_count,
@@ -789,6 +865,9 @@ def build_client_context(client, tool_key=""):
                 if alert_count == ticket_count
                 else "Mismatch"
             )
+        ),
+        **status_display_fields(
+            display_status
         )
     }
 
@@ -947,6 +1026,21 @@ def dashboard(request: Request):
             if review_only_count
             else "Equal"
         )
+    )
+    dashboard_context.update(
+        {
+            "status_hero_class":
+                dashboard_hero_class(
+                    dashboard_context["status"]
+                ),
+            **status_display_fields(
+                dashboard_context["status"]
+            ),
+            **priority_card_fields(
+                dashboard_context["status"],
+                dashboard_context["priority_issue"]
+            )
+        }
     )
 
     return templates.TemplateResponse(

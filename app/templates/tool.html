@@ -12,15 +12,7 @@
         <span>{{ tool.tool }}</span>
     </nav>
 
-    <section class="page-hero
-        {% if tool.tool_display_status == 'Equal' %}
-            page-hero--equal
-        {% elif tool.tool_display_status == 'Review' %}
-            page-hero--warning
-        {% else %}
-            page-hero--mismatch
-        {% endif %}
-    ">
+    <section class="page-hero {{ tool.page_hero_class }}">
         <div class="page-hero__heading">
             <div>
                 <p class="dashboard-eyebrow">
@@ -31,15 +23,7 @@
                     Client alert and Jira ticket reconciliation.
                 </p>
             </div>
-            <span class="status-badge
-                {% if tool.tool_display_status == 'Equal' %}
-                    status-badge--equal
-                {% elif tool.tool_display_status == 'Review' %}
-                    status-badge--warning
-                {% else %}
-                    status-badge--mismatch
-                {% endif %}
-            ">
+            <span class="status-badge {{ tool.status_badge_class }}">
                 {{ tool.tool_display_status }}
             </span>
         </div>
@@ -124,15 +108,7 @@
 
         <div class="operations-list">
             {% for client in tool.clients %}
-            <article class="client-status-row
-                {% if client.tool_display_status == 'Equal' %}
-                    client-status-row--equal
-                {% elif client.tool_display_status == 'Review' %}
-                    client-status-row--warning
-                {% else %}
-                    client-status-row--mismatch
-                {% endif %}
-            ">
+            <article class="client-status-row {{ client.client_status_row_class }}">
                 <div class="client-identity">
                     <h3>{{ client.client }}</h3>
                     <div class="source-tags">
@@ -178,15 +154,7 @@
                     {% endif %}
                 </div>
 
-                <span class="status-badge
-                    {% if client.tool_display_status == 'Equal' %}
-                        status-badge--equal
-                    {% elif client.tool_display_status == 'Review' %}
-                        status-badge--warning
-                    {% else %}
-                        status-badge--mismatch
-                    {% endif %}
-                ">
+                <span class="status-badge {{ client.status_badge_class }}">
                     {{ client.tool_display_status }}
                 </span>
 

@@ -51,15 +51,7 @@
         <span>{{ client.client }}</span>
     </nav>
 
-    <section class="page-hero
-        {% if display_status == 'Equal' %}
-            page-hero--equal
-        {% elif display_status == 'Review' %}
-            page-hero--warning
-        {% else %}
-            page-hero--mismatch
-        {% endif %}
-    ">
+    <section class="page-hero {{ client.page_hero_class }}">
         <div class="page-hero__heading">
             <div>
                 <p class="dashboard-eyebrow">
@@ -74,15 +66,7 @@
                     {% endif %}
                 </p>
             </div>
-            <span class="status-badge
-                {% if display_status == 'Equal' %}
-                    status-badge--equal
-                {% elif display_status == 'Review' %}
-                    status-badge--warning
-                {% else %}
-                    status-badge--mismatch
-                {% endif %}
-            ">
+            <span class="status-badge {{ client.status_badge_class }}">
                 {{ display_status }}
             </span>
         </div>
