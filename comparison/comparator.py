@@ -101,6 +101,127 @@ def _coverage_totals(
     }
 
 
+def _exact_client_bucket(
+    client,
+    sources=None,
+    alert_key="alerts"
+):
+    return {
+        "client": client,
+        "sources": set(sources or []),
+        alert_key: [],
+        "strict_tickets": [],
+        "correlated_tickets": [],
+        "matched_source_indexes": set()
+    }
+
+
+def _ensure_exact_client(
+    clients,
+    client,
+    sources=None,
+    alert_key="alerts"
+):
+    if client not in clients:
+        clients[client] = _exact_client_bucket(
+            client,
+            sources=sources,
+            alert_key=alert_key
+        )
+
+    return clients[client]
+
+
+def _metadata_issues_for_match(
+    ticket,
+    strict_client,
+    matched_client
+):
+    metadata_issues = list(
+        ticket.get(
+            "metadata_issues",
+            []
+        )
+        or []
+    )
+
+    if strict_client != matched_client:
+        metadata_issues.append(
+            "client_metadata_drift"
+        )
+
+    return sorted(
+        set(metadata_issues)
+    )
+
+
+def _exact_count_fields(
+    client,
+    alert_key="alerts",
+    status_fn=None
+):
+    alert_count = len(
+        client[alert_key]
+    )
+    strict_ticket_count = len(
+        client["strict_tickets"]
+    )
+    correlated_ticket_count = len(
+        client["correlated_tickets"]
+    )
+    unique_matched_source_count = len(
+        client["matched_source_indexes"]
+    )
+    missing_ticket_count = max(
+        alert_count
+        - unique_matched_source_count,
+        0
+    )
+    extra_ticket_count = max(
+        correlated_ticket_count
+        - alert_count,
+        0
+    )
+    coverage_delta = (
+        correlated_ticket_count
+        - alert_count
+    )
+    metadata_drift_count = sum(
+        1
+        for ticket in client["correlated_tickets"]
+        if ticket.get("metadata_issues")
+    )
+
+    if status_fn is None:
+        coverage_status = (
+            "Missing Tickets"
+            if missing_ticket_count > 0
+            else (
+                "Review"
+                if extra_ticket_count > 0
+                else "Covered"
+            )
+        )
+    else:
+        coverage_status = status_fn(
+            missing_ticket_count,
+            extra_ticket_count
+        )
+
+    return {
+        "alert_count": alert_count,
+        "strict_ticket_count": strict_ticket_count,
+        "correlated_ticket_count": correlated_ticket_count,
+        "unique_matched_source_count":
+            unique_matched_source_count,
+        "metadata_drift_count": metadata_drift_count,
+        "coverage_status": coverage_status,
+        "coverage_delta": coverage_delta,
+        "missing_ticket_count": missing_ticket_count,
+        "extra_ticket_count": extra_ticket_count
+    }
+
+
 def _normalized_identifier(value):
     if value is None:
         return ""
@@ -314,14 +435,11 @@ def _compare_microsoft_sentinel_correlation_data(
         if not client:
             continue
 
-        clients[client] = {
-            "client": client,
-            "sources": set(sources),
-            "alerts": [],
-            "strict_tickets": [],
-            "correlated_tickets": [],
-            "matched_source_indexes": set()
-        }
+        _ensure_exact_client(
+            clients,
+            client,
+            sources=sources
+        )
 
     source_index = {}
     workspace_by_client = {}
@@ -333,15 +451,10 @@ def _compare_microsoft_sentinel_correlation_data(
             "Unknown"
         ).strip()
 
-        if client not in clients:
-            clients[client] = {
-                "client": client,
-                "sources": set(),
-                "alerts": [],
-                "strict_tickets": [],
-                "correlated_tickets": [],
-                "matched_source_indexes": set()
-            }
+        _ensure_exact_client(
+            clients,
+            client
+        )
 
         clients[client]["sources"].add(
             record.get(
@@ -382,15 +495,11 @@ def _compare_microsoft_sentinel_correlation_data(
             "Unknown"
         ).strip()
 
-        if strict_client not in clients:
-            clients[strict_client] = {
-                "client": strict_client,
-                "sources": {source},
-                "alerts": [],
-                "strict_tickets": [],
-                "correlated_tickets": [],
-                "matched_source_indexes": set()
-            }
+        _ensure_exact_client(
+            clients,
+            strict_client,
+            sources={source}
+        )
 
         strict_ticket = {
             **ticket,
@@ -437,28 +546,11 @@ def _compare_microsoft_sentinel_correlation_data(
             "client"
         ]
 
-        if matched_client not in clients:
-            clients[matched_client] = {
-                "client": matched_client,
-                "sources": {source},
-                "alerts": [],
-                "strict_tickets": [],
-                "correlated_tickets": [],
-                "matched_source_indexes": set()
-            }
-
-        metadata_issues = list(
-            ticket.get(
-                "metadata_issues",
-                []
-            )
-            or []
+        _ensure_exact_client(
+            clients,
+            matched_client,
+            sources={source}
         )
-
-        if strict_client != matched_client:
-            metadata_issues.append(
-                "client_metadata_drift"
-            )
 
         correlated_ticket = {
             **ticket,
@@ -468,7 +560,11 @@ def _compare_microsoft_sentinel_correlation_data(
             "match_status":
                 "microsoft_sentinel_exact_id_match",
             "metadata_issues":
-                sorted(set(metadata_issues))
+                _metadata_issues_for_match(
+                    ticket,
+                    strict_client,
+                    matched_client
+                )
         }
 
         clients[matched_client][
@@ -487,45 +583,8 @@ def _compare_microsoft_sentinel_correlation_data(
 
     for client in clients.values():
 
-        alert_count = len(
-            client["alerts"]
-        )
-        strict_ticket_count = len(
-            client["strict_tickets"]
-        )
-        correlated_ticket_count = len(
-            client["correlated_tickets"]
-        )
-        unique_matched_source_count = len(
-            client["matched_source_indexes"]
-        )
-        missing_ticket_count = max(
-            alert_count
-            - unique_matched_source_count,
-            0
-        )
-        extra_ticket_count = max(
-            correlated_ticket_count
-            - alert_count,
-            0
-        )
-        coverage_delta = (
-            correlated_ticket_count
-            - alert_count
-        )
-        metadata_drift_count = sum(
-            1
-            for ticket in client["correlated_tickets"]
-            if ticket.get("metadata_issues")
-        )
-        coverage_status = (
-            "Missing Tickets"
-            if missing_ticket_count > 0
-            else (
-                "Review"
-                if extra_ticket_count > 0
-                else "Covered"
-            )
+        counts = _exact_count_fields(
+            client
         )
 
         result.append({
@@ -533,26 +592,28 @@ def _compare_microsoft_sentinel_correlation_data(
             "sources": sorted(
                 list(client["sources"])
             ),
-            "alert_count": alert_count,
-            "ticket_count": correlated_ticket_count,
+            "alert_count": counts["alert_count"],
+            "ticket_count": counts[
+                "correlated_ticket_count"
+            ],
             "strict_ticket_count":
-                strict_ticket_count,
+                counts["strict_ticket_count"],
             "correlated_ticket_count":
-                correlated_ticket_count,
+                counts["correlated_ticket_count"],
             "unique_matched_source_count":
-                unique_matched_source_count,
+                counts["unique_matched_source_count"],
             "metadata_drift_count":
-                metadata_drift_count,
+                counts["metadata_drift_count"],
             "coverage_status":
-                coverage_status,
+                counts["coverage_status"],
             "coverage_delta":
-                coverage_delta,
+                counts["coverage_delta"],
             "missing_ticket_count":
-                missing_ticket_count,
+                counts["missing_ticket_count"],
             "extra_ticket_count":
-                extra_ticket_count,
+                counts["extra_ticket_count"],
             "status":
-                coverage_status,
+                counts["coverage_status"],
             "alerts":
                 client["alerts"],
             "tickets":
@@ -628,14 +689,12 @@ def compare_data(
         if not client:
             continue
 
-        clients[client] = {
-            "client": client,
-            "sources": set(sources),
-            "sentinel_alerts": [],
-            "strict_tickets": [],
-            "correlated_tickets": [],
-            "matched_source_indexes": set()
-        }
+        _ensure_exact_client(
+            clients,
+            client,
+            sources=sources,
+            alert_key="sentinel_alerts"
+        )
 
     source_index = {}
 
@@ -650,15 +709,11 @@ def compare_data(
             raw_client
         )
 
-        if client not in clients:
-            clients[client] = {
-                "client": client,
-                "sources": set(),
-                "sentinel_alerts": [],
-                "strict_tickets": [],
-                "correlated_tickets": [],
-                "matched_source_indexes": set()
-            }
+        _ensure_exact_client(
+            clients,
+            client,
+            alert_key="sentinel_alerts"
+        )
 
         clients[client]["sources"].add(
             alert.get("source", "unknown")
@@ -691,15 +746,11 @@ def compare_data(
             raw_client
         )
 
-        if client not in clients:
-            clients[client] = {
-                "client": client,
-                "sources": set(),
-                "sentinel_alerts": [],
-                "strict_tickets": [],
-                "correlated_tickets": [],
-                "matched_source_indexes": set()
-            }
+        _ensure_exact_client(
+            clients,
+            client,
+            alert_key="sentinel_alerts"
+        )
 
         strict_ticket = {
             **ticket,
@@ -740,28 +791,11 @@ def compare_data(
             "client"
         ]
 
-        if matched_client not in clients:
-            clients[matched_client] = {
-                "client": matched_client,
-                "sources": set(),
-                "sentinel_alerts": [],
-                "strict_tickets": [],
-                "correlated_tickets": [],
-                "matched_source_indexes": set()
-            }
-
-        metadata_issues = list(
-            ticket.get(
-                "metadata_issues",
-                []
-            )
-            or []
+        _ensure_exact_client(
+            clients,
+            matched_client,
+            alert_key="sentinel_alerts"
         )
-
-        if client != matched_client:
-            metadata_issues.append(
-                "client_metadata_drift"
-            )
 
         correlated_ticket = {
             **ticket,
@@ -771,7 +805,11 @@ def compare_data(
             "match_status":
                 "sentinelone_exact_id_match",
             "metadata_issues":
-                sorted(set(metadata_issues))
+                _metadata_issues_for_match(
+                    ticket,
+                    client,
+                    matched_client
+                )
         }
 
         clients[matched_client][
@@ -790,48 +828,10 @@ def compare_data(
 
     for client in clients.values():
 
-        alert_count = len(
-            client["sentinel_alerts"]
-        )
-
-        strict_ticket_count = len(
-            client["strict_tickets"]
-        )
-
-        correlated_ticket_count = len(
-            client["correlated_tickets"]
-        )
-
-        unique_matched_source_count = len(
-            client["matched_source_indexes"]
-        )
-
-        missing_ticket_count = max(
-            alert_count
-            - unique_matched_source_count,
-            0
-        )
-
-        extra_ticket_count = max(
-            correlated_ticket_count
-            - alert_count,
-            0
-        )
-
-        coverage_delta = (
-            correlated_ticket_count
-            - alert_count
-        )
-
-        metadata_drift_count = sum(
-            1
-            for ticket in client["correlated_tickets"]
-            if ticket.get("metadata_issues")
-        )
-
-        status = _sentinelone_status(
-            missing_ticket_count,
-            extra_ticket_count
+        counts = _exact_count_fields(
+            client,
+            alert_key="sentinel_alerts",
+            status_fn=_sentinelone_status
         )
 
         result.append({
@@ -839,28 +839,30 @@ def compare_data(
             "sources": sorted(
                 list(client["sources"])
             ),
-            "sentinel_count": alert_count,
-            "jira_count": strict_ticket_count,
-            "alert_count": alert_count,
-            "ticket_count": correlated_ticket_count,
+            "sentinel_count": counts["alert_count"],
+            "jira_count": counts["strict_ticket_count"],
+            "alert_count": counts["alert_count"],
+            "ticket_count": counts[
+                "correlated_ticket_count"
+            ],
             "strict_ticket_count":
-                strict_ticket_count,
+                counts["strict_ticket_count"],
             "correlated_ticket_count":
-                correlated_ticket_count,
+                counts["correlated_ticket_count"],
             "unique_matched_source_count":
-                unique_matched_source_count,
+                counts["unique_matched_source_count"],
             "metadata_drift_count":
-                metadata_drift_count,
+                counts["metadata_drift_count"],
             "coverage_status":
-                status,
+                counts["coverage_status"],
             "coverage_delta":
-                coverage_delta,
+                counts["coverage_delta"],
             "missing_ticket_count":
-                missing_ticket_count,
+                counts["missing_ticket_count"],
             "extra_ticket_count":
-                extra_ticket_count,
+                counts["extra_ticket_count"],
             "status":
-                status,
+                counts["coverage_status"],
             "sentinel_alerts":
                 client["sentinel_alerts"],
             "jira_tickets":
@@ -1611,14 +1613,11 @@ def _compare_securonix_correlation_data(
         if not client:
             continue
 
-        clients[client] = {
-            "client": client,
-            "sources": set(sources),
-            "alerts": [],
-            "strict_tickets": [],
-            "correlated_tickets": [],
-            "matched_source_indexes": set()
-        }
+        _ensure_exact_client(
+            clients,
+            client,
+            sources=sources
+        )
 
     source_index = {}
 
@@ -1629,15 +1628,10 @@ def _compare_securonix_correlation_data(
             "Unknown"
         ).strip()
 
-        if client not in clients:
-            clients[client] = {
-                "client": client,
-                "sources": set(),
-                "alerts": [],
-                "strict_tickets": [],
-                "correlated_tickets": [],
-                "matched_source_indexes": set()
-            }
+        _ensure_exact_client(
+            clients,
+            client
+        )
 
         clients[client]["sources"].add(
             record.get(
@@ -1669,15 +1663,11 @@ def _compare_securonix_correlation_data(
             "Unknown"
         ).strip()
 
-        if strict_client not in clients:
-            clients[strict_client] = {
-                "client": strict_client,
-                "sources": {source},
-                "alerts": [],
-                "strict_tickets": [],
-                "correlated_tickets": [],
-                "matched_source_indexes": set()
-            }
+        _ensure_exact_client(
+            clients,
+            strict_client,
+            sources={source}
+        )
 
         strict_ticket = {
             **ticket,
@@ -1720,28 +1710,11 @@ def _compare_securonix_correlation_data(
             "client"
         ]
 
-        if matched_client not in clients:
-            clients[matched_client] = {
-                "client": matched_client,
-                "sources": {source},
-                "alerts": [],
-                "strict_tickets": [],
-                "correlated_tickets": [],
-                "matched_source_indexes": set()
-            }
-
-        metadata_issues = list(
-            ticket.get(
-                "metadata_issues",
-                []
-            )
-            or []
+        _ensure_exact_client(
+            clients,
+            matched_client,
+            sources={source}
         )
-
-        if strict_client != matched_client:
-            metadata_issues.append(
-                "client_metadata_drift"
-            )
 
         correlated_ticket = {
             **ticket,
@@ -1751,7 +1724,11 @@ def _compare_securonix_correlation_data(
             "match_status":
                 "securonix_exact_id_match",
             "metadata_issues":
-                sorted(set(metadata_issues))
+                _metadata_issues_for_match(
+                    ticket,
+                    strict_client,
+                    matched_client
+                )
         }
 
         clients[matched_client][
@@ -1770,45 +1747,8 @@ def _compare_securonix_correlation_data(
 
     for client in clients.values():
 
-        alert_count = len(
-            client["alerts"]
-        )
-        strict_ticket_count = len(
-            client["strict_tickets"]
-        )
-        correlated_ticket_count = len(
-            client["correlated_tickets"]
-        )
-        unique_matched_source_count = len(
-            client["matched_source_indexes"]
-        )
-        missing_ticket_count = max(
-            alert_count
-            - unique_matched_source_count,
-            0
-        )
-        extra_ticket_count = max(
-            correlated_ticket_count
-            - alert_count,
-            0
-        )
-        coverage_delta = (
-            correlated_ticket_count
-            - alert_count
-        )
-        metadata_drift_count = sum(
-            1
-            for ticket in client["correlated_tickets"]
-            if ticket.get("metadata_issues")
-        )
-        coverage_status = (
-            "Missing Tickets"
-            if missing_ticket_count > 0
-            else (
-                "Review"
-                if extra_ticket_count > 0
-                else "Covered"
-            )
+        counts = _exact_count_fields(
+            client
         )
 
         result.append({
@@ -1816,26 +1756,28 @@ def _compare_securonix_correlation_data(
             "sources": sorted(
                 list(client["sources"])
             ),
-            "alert_count": alert_count,
-            "ticket_count": correlated_ticket_count,
+            "alert_count": counts["alert_count"],
+            "ticket_count": counts[
+                "correlated_ticket_count"
+            ],
             "strict_ticket_count":
-                strict_ticket_count,
+                counts["strict_ticket_count"],
             "correlated_ticket_count":
-                correlated_ticket_count,
+                counts["correlated_ticket_count"],
             "unique_matched_source_count":
-                unique_matched_source_count,
+                counts["unique_matched_source_count"],
             "metadata_drift_count":
-                metadata_drift_count,
+                counts["metadata_drift_count"],
             "coverage_status":
-                coverage_status,
+                counts["coverage_status"],
             "coverage_delta":
-                coverage_delta,
+                counts["coverage_delta"],
             "missing_ticket_count":
-                missing_ticket_count,
+                counts["missing_ticket_count"],
             "extra_ticket_count":
-                extra_ticket_count,
+                counts["extra_ticket_count"],
             "status":
-                coverage_status,
+                counts["coverage_status"],
             "alerts":
                 client["alerts"],
             "tickets":
