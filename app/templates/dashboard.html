@@ -221,6 +221,62 @@
         {% endif %}
     </section>
 
+    <details class="dashboard-filters" id="dashboard-filters">
+        <summary>
+            <span>Filters</span>
+            <span class="dashboard-filters__hint">
+                Tool, status, or client
+            </span>
+        </summary>
+        <div
+            class="dashboard-filter-panel"
+            aria-label="Dashboard filters"
+        >
+            <label>
+                <span>Tool</span>
+                <select id="tool-filter">
+                    <option value="">All tools</option>
+                    {% for tool in tools %}
+                    <option value="{{ tool.tool_key }}">
+                        {{ tool.tool }}
+                    </option>
+                    {% endfor %}
+                </select>
+            </label>
+            <label>
+                <span>Status</span>
+                <select id="status-filter">
+                    <option value="">All statuses</option>
+                    <option value="equal">Equal</option>
+                    <option value="mismatch">Mismatch</option>
+                    <option value="review">Review</option>
+                    <option value="covered">Covered</option>
+                </select>
+            </label>
+            <label class="dashboard-filter-panel__search">
+                <span>Client</span>
+                <input
+                    id="client-filter"
+                    type="search"
+                    placeholder="Search client name"
+                    autocomplete="off"
+                >
+                <div
+                    class="client-filter-suggestions"
+                    id="client-filter-suggestions"
+                    hidden
+                ></div>
+            </label>
+            <button
+                class="filter-clear-button"
+                id="clear-filters"
+                type="button"
+            >
+                Clear filters
+            </button>
+        </div>
+    </details>
+
     <section class="tool-health-section">
         <div class="section-heading">
             <div>
@@ -241,7 +297,14 @@
                 {% else %}
                     tool-health-card--mismatch
                 {% endif %}
-            ">
+            "
+                data-filter-card
+                data-filter-tool="{{ tool.tool_key }}"
+                data-filter-tool-name="{{ tool.tool | lower }}"
+                data-filter-status="{{ tool.tool_display_status | lower }} {{ tool.status | default('') | lower }} {% for client in tool.clients %}{{ client.tool_display_status | default('') | lower }} {{ client.status | default('') | lower }} {{ client.coverage_status | default('') | lower }} {% endfor %}"
+                data-filter-clients="{% for client in tool.clients %}{{ client.client | lower }} {% endfor %}"
+                data-filter-client-names="{% for client in tool.clients %}{{ client.client }}{% if not loop.last %}||{% endif %}{% endfor %}"
+            >
                 <div class="tool-health-card__header">
                     <h3>{{ tool.tool }}</h3>
                     <span class="status-badge
@@ -318,7 +381,154 @@
             </p>
             {% endfor %}
         </div>
+        <p
+            class="empty-state filter-empty-state"
+            id="filter-empty-state"
+            hidden
+        >
+            No matching results.
+        </p>
     </section>
 </main>
+<script>
+    const filterCards = Array.from(
+        document.querySelectorAll("[data-filter-card]")
+    );
+    const toolFilter = document.getElementById("tool-filter");
+    const statusFilter = document.getElementById("status-filter");
+    const clientFilter = document.getElementById("client-filter");
+    const clientSuggestions = document.getElementById(
+        "client-filter-suggestions"
+    );
+    const clearFilters = document.getElementById("clear-filters");
+    const emptyState = document.getElementById("filter-empty-state");
+    const allClients = filterCards.flatMap((card) => {
+            const names = card.dataset.filterClientNames || "";
+            return names
+                .split("||")
+                .map((name) => name.trim())
+                .filter(Boolean)
+                .map((name) => ({
+                    name,
+                    toolKey: card.dataset.filterTool,
+                    toolName: card.querySelector("h3").textContent.trim()
+                }));
+        })
+        .sort((first, second) => (
+            first.name.localeCompare(second.name)
+            || first.toolName.localeCompare(second.toolName)
+        ));
+
+    function clientUrl(match) {
+        return `/tool/${encodeURIComponent(match.toolKey)}/client/${
+            encodeURIComponent(match.name)
+        }`;
+    }
+
+    function clientMatches() {
+        const selectedTool = toolFilter.value;
+        const clientQuery = clientFilter.value.trim().toLowerCase();
+
+        return allClients
+            .filter((match) => (
+                (!selectedTool || match.toolKey === selectedTool)
+                && clientQuery
+                && match.name.toLowerCase().includes(clientQuery)
+            ));
+    }
+
+    function updateClientSuggestions() {
+        const clientQuery = clientFilter.value.trim().toLowerCase();
+        const matches = clientMatches()
+            .slice(0, 12);
+
+        clientSuggestions.innerHTML = "";
+
+        if (!matches.length) {
+            clientSuggestions.hidden = true;
+            return;
+        }
+
+        matches.forEach((match) => {
+            const button = document.createElement("button");
+            const clientName = document.createElement("span");
+            const toolName = document.createElement("small");
+
+            button.type = "button";
+            clientName.textContent = match.name;
+            toolName.textContent = match.toolName;
+            button.append(clientName, toolName);
+            button.addEventListener("click", () => {
+                window.location.href = clientUrl(match);
+            });
+            clientSuggestions.appendChild(button);
+        });
+
+        clientSuggestions.hidden = false;
+    }
+
+    function applyDashboardFilters() {
+        const selectedTool = toolFilter.value;
+        const selectedStatus = statusFilter.value;
+        let visibleCount = 0;
+
+        filterCards.forEach((card) => {
+            const toolMatches = (
+                !selectedTool
+                || card.dataset.filterTool === selectedTool
+            );
+            const statusMatches = (
+                !selectedStatus
+                || card.dataset.filterStatus
+                    .split(/\s+/)
+                    .includes(selectedStatus)
+            );
+            const isVisible = (
+                toolMatches
+                && statusMatches
+            );
+
+            card.hidden = !isVisible;
+
+            if (isVisible) {
+                visibleCount += 1;
+            }
+        });
+
+        emptyState.hidden = visibleCount > 0;
+    }
+
+    [toolFilter, statusFilter, clientFilter].forEach((control) => {
+        control.addEventListener("input", applyDashboardFilters);
+        control.addEventListener("change", applyDashboardFilters);
+    });
+
+    clientFilter.addEventListener("input", updateClientSuggestions);
+    clientFilter.addEventListener("keydown", (event) => {
+        if (event.key !== "Enter") {
+            return;
+        }
+
+        const query = clientFilter.value.trim().toLowerCase();
+        const matches = clientMatches();
+        const exactMatch = matches.find(
+            (match) => match.name.toLowerCase() === query
+        );
+        const selectedMatch = exactMatch || matches[0];
+
+        if (selectedMatch) {
+            event.preventDefault();
+            window.location.href = clientUrl(selectedMatch);
+        }
+    });
+
+    clearFilters.addEventListener("click", () => {
+        toolFilter.value = "";
+        statusFilter.value = "";
+        clientFilter.value = "";
+        clientSuggestions.hidden = true;
+        applyDashboardFilters();
+    });
+</script>
 </body>
 </html>

@@ -19,11 +19,11 @@
         tickets
     ) %}
     {% set evidence_label = "Incident IDs"
-        if tool.tool_key == "securonix"
+        if tool.tool_key in ["securonix", "microsoft_sentinel"]
         else "Alert IDs"
     %}
     {% set source_label = "Incidents"
-        if tool.tool_key == "securonix"
+        if tool.tool_key in ["securonix", "microsoft_sentinel"]
         else "Alerts"
     %}
     {% set source_evidence = client.get(
@@ -183,17 +183,33 @@
                         Sample Alert ID:
                         {{ alert.sample_alert_id | default("-") }}
                     </span>
+                    <span>
+                        Time: {{ alert.display_time or "-" }}
+                    </span>
                     <span>Level: {{ alert.level | default("-") }}</span>
                     <span>Location: {{ alert.location | default("-") }}</span>
                     <p class="evidence-description">
                         {{ alert.description | default("-") }}
                     </p>
                     {% else %}
-                    <code>{{ alert.id }}</code>
-                    {% if tool.tool_key == "securonix" %}
+                    <code>{{ alert.display_id or alert.id }}</code>
+                    <span>
+                        Time: {{ alert.display_time or "-" }}
+                    </span>
+                    {% if tool.tool_key in ["securonix", "microsoft_sentinel"] %}
                         {% if alert.status %}
                             <span>Status: {{ alert.status }}</span>
                         {% endif %}
+                    {% endif %}
+                    {% if tool.tool_key == "microsoft_sentinel" %}
+                        {% if alert.severity %}
+                            <span>Severity: {{ alert.severity }}</span>
+                        {% endif %}
+                        {% if alert.title %}
+                            <span>Title: {{ alert.title }}</span>
+                        {% endif %}
+                    {% endif %}
+                    {% if tool.tool_key == "securonix" %}
                         {% if alert.priority %}
                             <span>Priority: {{ alert.priority }}</span>
                         {% endif %}
@@ -259,6 +275,15 @@
                     {% endif %}
                     {% if ticket.status %}
                     <span>Status: {{ ticket.status }}</span>
+                    {% endif %}
+                    <span>
+                        Time: {{ ticket.display_time or "-" }}
+                    </span>
+                    {% if ticket.microsoft_sentinel_incident_id %}
+                    <span>
+                        Incident ID:
+                        {{ ticket.microsoft_sentinel_incident_id }}
+                    </span>
                     {% endif %}
                     {% if (
                         ticket.client_resolution_source

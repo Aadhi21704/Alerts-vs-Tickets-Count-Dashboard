@@ -178,14 +178,27 @@ def _normalize_incident(client_name, workspace_name, incident):
     incident_number = properties.get(
         "incidentNumber"
     )
+    provider_incident_id = properties.get(
+        "providerIncidentId"
+    )
+
+    display_id = (
+        provider_incident_id
+        or incident_number
+        or incident_name
+        or incident_guid
+    )
 
     return {
         "id": incident_name or incident_guid or incident_number,
+        "display_id": display_id,
         "client": client_name,
         "source": "microsoft_sentinel",
         "microsoft_sentinel_incident_name": incident_name,
         "microsoft_sentinel_incident_guid": incident_guid,
         "microsoft_sentinel_incident_id": incident_number,
+        "microsoft_sentinel_provider_incident_id":
+            provider_incident_id,
         "incident_number": incident_number,
         "microsoft_sentinel_incident_arm_id": arm_id,
         "microsoft_sentinel_workspace_name": workspace_name,

@@ -1,5 +1,6 @@
 from pathlib import Path
 from datetime import datetime
+from datetime import timezone
 import json
 import scheduler
 from zoneinfo import ZoneInfo
@@ -76,6 +77,438 @@ def find_client(tool, client_name):
     )
 
 
+def first_present(record, field_names):
+    for field_name in field_names:
+        value = record.get(
+            field_name
+        )
+
+        if value not in (
+            None,
+            ""
+        ):
+            return value
+
+    return ""
+
+
+def timestamp_fields(record):
+    if record.get("_record_type") == "ticket":
+        return (
+            "created",
+            "jira_created",
+            "status_time",
+            "updated",
+            "updatedAt",
+            "updated_at",
+            "createdAt",
+            "created_at",
+            "timestamp",
+            "createdTimeUtc",
+            "lastModifiedTimeUtc",
+            "microsoft_sentinel_created_time_utc",
+            "microsoft_sentinel_last_modified_time_utc"
+        )
+
+    return (
+        "created",
+        "createdAt",
+        "created_at",
+        "timestamp",
+        "updated",
+        "updatedAt",
+        "updated_at",
+        "detectedAt",
+        "threatCreatedAt",
+        "firstSeen",
+        "lastSeen",
+        "last_seen",
+        "latest_timestamp",
+        "latestTimestamp",
+        "display_time",
+        "createdTimeUtc",
+        "lastModifiedTimeUtc",
+        "microsoft_sentinel_created_time_utc",
+        "microsoft_sentinel_last_modified_time_utc",
+        "sentinelone_created_at",
+        "sentinelone_updated_at"
+    )
+
+
+def raw_timestamp_value(record):
+    return first_present(
+        record,
+        timestamp_fields(record)
+    )
+
+
+def parse_display_datetime(value):
+    if value in (None, ""):
+        return None
+
+    if isinstance(value, (int, float)):
+        if value >= 100000000000:
+            return datetime.fromtimestamp(
+                value / 1000,
+                tz=timezone.utc
+            )
+
+        return None
+
+    value_text = str(value).strip()
+
+    if (
+        value_text.isdigit()
+        and len(value_text) >= 12
+    ):
+        try:
+            return datetime.fromtimestamp(
+                int(value_text) / 1000,
+                tz=timezone.utc
+            )
+        except (OverflowError, ValueError):
+            return None
+
+    normalized_value = value_text
+
+    if normalized_value.endswith("Z"):
+        normalized_value = (
+            normalized_value[:-1]
+            + "+00:00"
+        )
+
+    try:
+        parsed_datetime = datetime.fromisoformat(
+            normalized_value
+        )
+    except ValueError:
+        return None
+
+    if parsed_datetime.tzinfo is None:
+        parsed_datetime = parsed_datetime.replace(
+            tzinfo=timezone.utc
+        )
+
+    return parsed_datetime
+
+
+def timestamp_sort_value(value):
+    parsed_datetime = parse_display_datetime(
+        value
+    )
+
+    if parsed_datetime is None:
+        return str(value or "")
+
+    return parsed_datetime.astimezone(
+        timezone.utc
+    ).isoformat()
+
+
+def format_display_time(value):
+    if value in (None, ""):
+        return ""
+
+    parsed_datetime = parse_display_datetime(
+        value
+    )
+
+    if parsed_datetime is None:
+        return str(value).strip()
+
+    return parsed_datetime.astimezone(
+        ZoneInfo("Asia/Kolkata")
+    ).strftime(
+        "%d %b %Y, %I:%M %p IST"
+    )
+
+
+def display_identifier(record, tool_key):
+    if tool_key == "microsoft_sentinel":
+        return first_present(
+            record,
+            (
+                "microsoft_sentinel_incident_id",
+                "incident_number",
+                "display_id",
+                "microsoft_sentinel_provider_incident_id",
+                "providerIncidentId",
+                "id"
+            )
+        )
+
+    if tool_key == "wazuh":
+        return first_present(
+            record,
+            (
+                "sample_alert_id",
+                "wazuh_alert_id",
+                "id",
+                "rule_id"
+            )
+        )
+
+    return first_present(
+        record,
+        (
+            "display_id",
+            "id",
+            "securonix_incident_id",
+            "sentinelone_threat_id",
+            "key",
+            "jira_key"
+        )
+    )
+
+
+def normalized_identifier(value):
+    if value is None:
+        return ""
+
+    return str(value).strip().casefold()
+
+
+def source_match_identifiers(record, tool_key):
+    identifiers = []
+
+    if tool_key == "microsoft_sentinel":
+        fields = (
+            "microsoft_sentinel_incident_arm_id",
+            "microsoft_sentinel_incident_name",
+            "microsoft_sentinel_incident_guid",
+            "microsoft_sentinel_incident_id",
+            "incident_number",
+            "id"
+        )
+    elif tool_key == "securonix":
+        fields = (
+            "id",
+            "securonix_incident_id",
+            "securonix_incident_url"
+        )
+    elif tool_key == "sentinelone":
+        fields = (
+            "id",
+            "sentinelone_source_id",
+            "sentinelone_threat_id",
+            "sentinelone_threat_url_id"
+        )
+    elif tool_key == "wazuh":
+        fields = (
+            "sample_alert_id",
+            "rule_id",
+            "id"
+        )
+    else:
+        fields = ("id",)
+
+    for field_name in fields:
+        identifier = normalized_identifier(
+            record.get(field_name)
+        )
+
+        if identifier:
+            identifiers.append(identifier)
+
+    return sorted(set(identifiers))
+
+
+def ticket_match_identifiers(record, tool_key):
+    identifiers = []
+
+    if tool_key == "microsoft_sentinel":
+        fields = (
+            "microsoft_sentinel_incident_arm_id",
+            "microsoft_sentinel_incident_arm_guid",
+            "microsoft_sentinel_incident_url_guid",
+            "microsoft_sentinel_incident_id"
+        )
+    elif tool_key == "securonix":
+        fields = (
+            "securonix_incident_id",
+            "securonix_incident_url_id",
+            "securonix_incident_url"
+        )
+    elif tool_key == "sentinelone":
+        fields = (
+            "sentinelone_threat_id",
+            "sentinelone_threat_url_id"
+        )
+    elif tool_key == "wazuh":
+        fields = (
+            "wazuh_alert_id",
+            "rule_id"
+        )
+    else:
+        fields = ("key", "jira_key")
+
+    for field_name in fields:
+        identifier = normalized_identifier(
+            record.get(field_name)
+        )
+
+        if identifier:
+            identifiers.append(identifier)
+
+    return sorted(set(identifiers))
+
+
+def enrich_record(record, tool_key, record_type):
+    enriched = {
+        **record
+    }
+    enriched["_record_type"] = record_type
+    raw_timestamp = raw_timestamp_value(
+        enriched
+    )
+    enriched["_display_id"] = display_identifier(
+        enriched,
+        tool_key
+    )
+    enriched["display_id"] = enriched["_display_id"]
+    enriched["_raw_timestamp"] = raw_timestamp
+    enriched["_sort_timestamp"] = timestamp_sort_value(
+        raw_timestamp
+    )
+    enriched["_display_timestamp"] = format_display_time(
+        raw_timestamp
+    )
+    enriched["display_time"] = enriched["_display_timestamp"]
+
+    return enriched
+
+
+def _sort_timestamp(record):
+    value = record.get(
+        "_sort_timestamp",
+        ""
+    )
+
+    if value is None:
+        return ""
+
+    return str(value)
+
+
+def align_evidence_records(alerts, tickets, tool_key):
+    enriched_alerts = [
+        enrich_record(
+            alert,
+            tool_key,
+            "source"
+        )
+        for alert in alerts
+    ]
+    enriched_tickets = [
+        enrich_record(
+            ticket,
+            tool_key,
+            "ticket"
+        )
+        for ticket in tickets
+    ]
+
+    ticket_order = {}
+    ticket_by_identifier = {}
+    matched_source_indexes = set()
+
+    for ticket_index, ticket in enumerate(enriched_tickets):
+        for identifier in ticket_match_identifiers(
+            ticket,
+            tool_key
+        ):
+            ticket_order.setdefault(
+                identifier,
+                ticket_index
+            )
+            ticket_by_identifier.setdefault(
+                identifier,
+                ticket
+            )
+
+    ordered_alerts = []
+    unmatched_alerts = []
+
+    for alert_index, alert in enumerate(enriched_alerts):
+        matched_ticket_index = None
+        matched_identifier = None
+
+        for identifier in source_match_identifiers(
+            alert,
+            tool_key
+        ):
+            if identifier in ticket_order:
+                matched_ticket_index = ticket_order[
+                    identifier
+                ]
+                matched_identifier = identifier
+                break
+
+        alert["_matched_ticket_index"] = matched_ticket_index
+        alert["_matched_identifier"] = matched_identifier
+
+        if matched_ticket_index is None:
+            unmatched_alerts.append(
+                alert
+            )
+        else:
+            matched_source_indexes.add(
+                alert_index
+            )
+            ordered_alerts.append(
+                alert
+            )
+
+    ordered_alerts.sort(
+        key=lambda record: (
+            record.get("_matched_ticket_index", 0),
+            _sort_timestamp(record)
+        ),
+        reverse=False
+    )
+    unmatched_alerts.sort(
+        key=_sort_timestamp,
+        reverse=True
+    )
+
+    for source_order, alert in enumerate(ordered_alerts):
+        matched_ticket = ticket_by_identifier.get(
+            alert.get("_matched_identifier")
+        )
+
+        if matched_ticket is not None:
+            matched_ticket["_matched_source_order"] = source_order
+
+    matched_tickets = []
+    unmatched_tickets = []
+
+    for ticket in enriched_tickets:
+        if ticket.get("_matched_source_order") is not None:
+            matched_tickets.append(
+                ticket
+            )
+        else:
+            unmatched_tickets.append(
+                ticket
+            )
+
+    matched_tickets.sort(
+        key=lambda record: (
+            record.get("_matched_source_order", 999999),
+            _sort_timestamp(record)
+        )
+    )
+    unmatched_tickets.sort(
+        key=_sort_timestamp,
+        reverse=True
+    )
+
+    return (
+        ordered_alerts + unmatched_alerts,
+        matched_tickets + unmatched_tickets
+    )
+
+
 def build_soc_display(
     alert_count,
     ticket_count,
@@ -132,7 +565,10 @@ def build_soc_display(
 def build_tool_context(tool):
 
     clients = [
-        build_client_context(client)
+        build_client_context(
+            client,
+            tool.get("tool_key", "")
+        )
         for client in tool.get("clients", [])
     ]
     has_correlation_ui = (
@@ -258,7 +694,7 @@ def build_tool_context(tool):
     return tool_context
 
 
-def build_client_context(client):
+def build_client_context(client, tool_key=""):
 
     alerts = client.get(
         "alerts",
@@ -273,6 +709,18 @@ def build_client_context(client):
             "jira_tickets",
             []
         )
+    )
+    source_evidence = client.get(
+        "source_evidence",
+        client.get(
+            "wazuh_source_evidence",
+            alerts
+        )
+    )
+    display_alerts, display_tickets = align_evidence_records(
+        source_evidence,
+        tickets,
+        tool_key
     )
     alert_count = client.get(
         "alert_count",
@@ -330,11 +778,10 @@ def build_client_context(client):
             "coverage_delta_display"
         ],
         **soc_display,
-        "display_tickets": (
-            list(reversed(tickets))
-            if alerts and tickets
-            else tickets
-        ),
+        "alerts": display_alerts,
+        "source_evidence": display_alerts,
+        "wazuh_source_evidence": display_alerts,
+        "display_tickets": display_tickets,
         "status": client.get(
             "status",
             (
@@ -577,7 +1024,8 @@ def client_dashboard(
         )
 
     client_context = build_client_context(
-        client
+        client,
+        tool_name
     )
 
     return templates.TemplateResponse(
