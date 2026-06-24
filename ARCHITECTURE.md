@@ -24,6 +24,13 @@ where a Tool may include:
 
 The architecture must remain generic and reusable.
 
+Current supported dashboard tools are:
+
+* SentinelOne
+* Wazuh
+* Securonix
+* Microsoft Sentinel CPAi
+
 ---
 
 # Current Architecture
@@ -50,6 +57,11 @@ Jinja templates, and CSS. The active UI does not depend on a standalone
 
 Stable UI release: `dashboard-ui-v1.1`.
 
+Post-cleanup note: `codebase-slimdown-v1` introduced shared comparator
+utilities for exact-ID correlation, and `css-template-cleanup-v1` reduced
+display duplication only. These cleanups did not change dashboard behavior,
+routes, wording, or supported correlation rules.
+
 ---
 
 # Implemented Features
@@ -72,6 +84,9 @@ Implemented:
 ```
 
 This schema is now the source of truth.
+
+`latest.json` is generated runtime output. It must not be manually edited or
+committed.
 
 ---
 
@@ -148,6 +163,37 @@ Delta display rules:
 
 Metadata drift is secondary evidence. It must not become the primary red
 coverage state by itself.
+
+The visible dashboard wording is `Equal`, `Mismatch`, and `Review`. Do not
+reintroduce `Triaging` as a status label for count-based extra-ticket states.
+
+---
+
+## Shared Exact-ID Correlation Helper
+
+SentinelOne, Securonix, and Microsoft Sentinel now use shared internal
+comparator helper utilities for the repeated exact-ID flow:
+
+* Source identifier extraction
+* Jira ticket identifier extraction
+* Exact match lookup
+* Strict ticket assignment
+* Correlated ticket assignment
+* Metadata drift handling
+* Matched/unmatched counting
+* Common coverage totals
+
+Tool-specific identifier extraction remains separate. SentinelOne identifiers
+must remain SentinelOne-only, Securonix identifiers must remain Securonix-only,
+and Microsoft Sentinel identifiers must remain Microsoft Sentinel-only.
+
+The shared helper does not introduce fuzzy matching and must not match on
+title, timestamp, summary, severity, or client alone.
+
+Wazuh remains separate because it uses grouped WHB evidence, tenant-field
+tracking, and configured source-evidence client hints rather than simple
+source-to-Jira exact-ID matching. Do not merge Wazuh into the generic exact-ID
+helper.
 
 ---
 

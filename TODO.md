@@ -39,6 +39,8 @@
 * [x] Microsoft Sentinel CPAi Jira extraction
 * [x] Microsoft Sentinel CPAi exact-ID Jira correlation
 * [x] Microsoft Sentinel dashboard backend integration
+* [x] Shared exact-ID comparator helper for SentinelOne, Securonix, and
+      Microsoft Sentinel
 * [x] UI Phase 1 polished homepage
 * [x] UI Phase 2 polished tool and client pages
 * [x] Client evidence display ordering
@@ -60,6 +62,17 @@
 * [x] Remove unused `app/static/app.js`
 * [x] Keep `/api/data` as deprecated legacy compatibility
 * [x] Add canonical read-only `/api/dashboard`
+* [x] Codebase slimdown v1
+* [x] CSS/template cleanup v1
+
+---
+
+## Current Supported Tools
+
+* SentinelOne
+* Wazuh
+* Securonix
+* Microsoft Sentinel CPAi
 
 ---
 
@@ -466,17 +479,24 @@ Planned
 
 ### Tool-Agnostic Comparator
 
-Current comparator contains tool-specific correlation paths for SentinelOne,
-Wazuh, and Securonix.
+Current comparator uses shared exact-ID helper utilities for SentinelOne,
+Securonix, and Microsoft Sentinel. Tool-specific identifier extraction remains
+separate and exact.
+
+Wazuh remains a separate grouped/evidence-based correlation path and must not
+be merged into the shared exact-ID helper.
 
 Goal:
 
-Comparator should operate entirely on normalized tool data.
+Comparator should continue reducing duplication while preserving exact
+matching behavior and output compatibility.
 
 Requirements:
 
-* Minimize vendor-specific branching
-* Reusable across all tools
+* Keep SentinelOne, Securonix, and Microsoft Sentinel exact-ID matching
+  reusable through shared helpers
+* Keep Wazuh separate unless a future audited requirement proves it can safely
+  use a generic pattern
 * Evaluate whether the Wazuh coverage/correlation model should become the
   generic SOC pattern for additional tools
 * Consider moving tool-specific correlation into plugin-style modules if the
@@ -484,7 +504,7 @@ Requirements:
 
 Status:
 
-Planned
+V1 completed; further cleanup planned
 
 ---
 
@@ -596,8 +616,9 @@ Current active development focus:
 1. Stable dashboard release `dashboard-ui-v1.1`
 2. Stabilize the canonical API and data model across all integrated tools
 3. Keep coverage labels consistent: Equal, Mismatch, Review
-4. React migration planning
-5. Optional charts and polish
+4. Keep `latest.json` as generated runtime output only
+5. React migration planning
+6. Optional charts and polish
 
 Do not replace the stable dashboard unless explicitly requested.
 

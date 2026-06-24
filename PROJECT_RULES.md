@@ -17,6 +17,7 @@ where a Tool can be:
 * SentinelOne
 * Wazuh
 * Securonix
+* Microsoft Sentinel CPAi
 * Microsoft Defender
 * CrowdStrike
 * Future security platforms
@@ -47,7 +48,12 @@ The following items are considered completed and should not be reimplemented:
 * Wazuh collector, Jira, comparator, and dashboard integration
 * Securonix collector, Jira, comparator, and dashboard integration
 * Securonix exact incident-ID Jira correlation
+* Microsoft Sentinel CPAi dashboard backend integration
+* Microsoft Sentinel CPAi exact-ID Jira correlation
+* Shared exact-ID comparator helper for SentinelOne, Securonix, and Microsoft
+  Sentinel
 * Polished FastAPI, Jinja, and CSS dashboard UI
+* Display-only CSS/template cleanup
 * Canonical read-only `/api/dashboard` endpoint
 * Disabled `/api/update` endpoint
 * Removal of the legacy `app.js`
@@ -145,6 +151,9 @@ The following belong in config.py:
 * Client mappings
 * Managed client registries
 * Tool configuration
+
+`latest.json` is generated runtime output. Do not manually edit it and do not
+commit generated dashboard data.
 
 ---
 
@@ -260,6 +269,8 @@ Dashboard status labels should use coverage-first SOC semantics:
 * Review means extra Jira tickets exist and need review for source API delay,
   pagination/window mismatch, Jira/source refresh timing, duplicates, stale
   tickets, or real triage.
+
+Do not use `Triaging` as the visible dashboard status for extra-ticket states.
 
 Delta display rules:
 
@@ -409,6 +420,10 @@ Do not match SentinelOne coverage on:
 
 Extra matched Jira tickets are Review. Missing exact matches are Mismatch.
 
+SentinelOne shares the generic exact-ID comparator helper with Securonix and
+Microsoft Sentinel. SentinelOne-specific identifier extraction must remain
+SentinelOne-only and exact.
+
 ---
 
 # Wazuh Rules
@@ -450,6 +465,9 @@ greater than 1.
 Raw `full_log`, `data`, and other raw payloads must not be stored or
 displayed. Metadata drift is secondary and must not become the main failure
 state.
+
+Wazuh must not be merged into the shared exact-ID helper. It uses grouped WHB
+evidence, tenant-field tracking, and source-evidence client hints.
 
 ---
 
@@ -511,6 +529,41 @@ Never store or display these Securonix fields:
 * `solrquery`
 * Raw descriptions
 * Raw payloads
+
+Securonix shares the generic exact-ID comparator helper with SentinelOne and
+Microsoft Sentinel. Securonix-specific identifier extraction must remain
+Securonix-only and exact.
+
+---
+
+# Microsoft Sentinel Rules
+
+Current supported Microsoft Sentinel client:
+
+* ContractPodAi / CPAi
+
+Microsoft Sentinel CPAi uses exact-ID source-to-Jira correlation through the
+shared comparator helper.
+
+Allowed matching evidence:
+
+* Exact Incident ARM ID
+* Exact incident GUID from the API incident name or final ARM incident segment
+* Exact incident GUID from Jira Incident URL
+* Numeric Incident ID only within the same configured client/workspace
+
+Do not match Microsoft Sentinel coverage on:
+
+* Title
+* Jira summary alone
+* Timestamp
+* Tenant or client alone
+* Severity
+* Fuzzy similarity
+
+CPAi Jira tickets require Tenant Name `ContractPodAi` and summary containing
+`CPAi`. LeahAI also uses Tenant Name `ContractPodAi` and must not be included
+in CPAi matching.
 
 ---
 

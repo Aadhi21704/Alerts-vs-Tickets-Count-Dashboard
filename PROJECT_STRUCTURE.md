@@ -93,6 +93,9 @@ Purpose:
 
 Canonical dashboard data source.
 
+`latest.json` is generated runtime output from `run.py`. It must not be
+manually edited or committed.
+
 Current structure:
 
 ```json id="eywd2r"
@@ -314,6 +317,8 @@ Current responsibilities:
 * Ticket counts
 * Client status
 * Source aggregation
+* Shared exact-ID correlation helper utilities for SentinelOne, Securonix,
+  and Microsoft Sentinel
 * Exact SentinelOne alias normalization before grouping
 * Exact SentinelOne source-to-Jira ID correlation
 * Exact Securonix incident-ID source-to-Jira correlation
@@ -326,6 +331,11 @@ canonical client name.
 
 Collectors do not own or duplicate this alias mapping.
 
+SentinelOne, Securonix, and Microsoft Sentinel use the shared exact-ID helper
+for the repeated source index, ticket match, strict/correlated ticket, metadata
+drift, and coverage-total flow. Tool-specific identifier extraction remains
+separate and must stay exact.
+
 SentinelOne uses exact-ID correlation. It matches Jira tickets only when
 `sentinelone_threat_id` or `sentinelone_threat_url_id` exactly matches a
 current SentinelOne source identifier such as `id`,
@@ -337,6 +347,10 @@ Wazuh uses the correlation resilience flow. Its comparison uses source alert
 counts and correlated Jira tickets as the primary coverage signal. Strict
 tenant-field ticket counts and metadata drift are retained as secondary
 evidence.
+
+Wazuh must remain separate from the shared exact-ID helper. It uses grouped WHB
+evidence, tenant-field tracking, and configured source-evidence hints rather
+than simple current-source exact-ID matching.
 
 Securonix uses exact incident-ID correlation. It matches Jira tickets only
 when `securonix_incident_id` or `securonix_incident_url_id` exactly matches a
@@ -367,6 +381,8 @@ SOC coverage language:
 * Review: Jira has more tickets than source alerts and needs review for source
   API delay, pagination/window mismatch, Jira/source refresh timing,
   duplicates, stale tickets, or real triage
+
+The dashboard label is `Review`, not `Triaging`.
 
 Coverage deltas are `correlated_ticket_count - alert_count`. Equal coverage
 is `0`, missing tickets are negative values, and extra tickets are reported
@@ -541,6 +557,10 @@ Responsibilities:
 * Cards and evidence panels
 * Navigation styling
 * Responsive behavior
+
+The CSS/template cleanup was display-only. It grouped repeated styles and
+template class branches without changing dashboard behavior, wording, routes,
+filters, client search, timestamps, or status labels.
 
 ---
 

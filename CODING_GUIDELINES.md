@@ -140,6 +140,14 @@ Comparator must not:
 
 Keep comparator logic tool-agnostic whenever possible.
 
+SentinelOne, Securonix, and Microsoft Sentinel share internal exact-ID
+correlation helper utilities for the repeated source-index, ticket-match,
+metadata-drift, and coverage-total flow. Keep tool-specific identifier
+extraction separate and exact.
+
+Do not merge Wazuh into the shared exact-ID helper. Wazuh uses grouped WHB
+evidence, tenant-field tracking, and configured source-evidence hints.
+
 ---
 
 # FastAPI Layer
@@ -164,6 +172,9 @@ Examples:
 * Template-specific evidence ordering
 
 Do not mutate `latest.json` to support presentation requirements.
+
+`latest.json` is generated runtime output from the collection workflow. Do not
+manually edit it and do not commit it as part of feature or cleanup work.
 
 ---
 
@@ -190,6 +201,10 @@ alignment must not change ordering in collectors, comparator output, or
 `latest.json`.
 
 Preserve original data fields and derive separate display fields when needed.
+
+CSS/template cleanup should remain display-only. Group repeated styles or
+template class branches only when wording, routes, filters, client search,
+timestamps, status labels, and behavior remain unchanged.
 
 ---
 
@@ -351,6 +366,13 @@ Comparator
 Dashboard
 
 for every supported platform.
+
+Current supported tools:
+
+* SentinelOne
+* Wazuh
+* Securonix
+* Microsoft Sentinel CPAi
 
 ---
 
