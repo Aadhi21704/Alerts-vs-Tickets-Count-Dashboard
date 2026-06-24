@@ -840,13 +840,46 @@ def _resolve_wazuh_jira_client(
     }
 
 
+def _issue_fields(issue):
+    fields = issue.get(
+        "fields",
+        {}
+    )
+
+    if isinstance(fields, dict):
+        return fields
+
+    return {}
+
+
+def _issue_key(issue):
+    return issue.get(
+        "key",
+        ""
+    )
+
+
+def _jira_status_name(fields):
+    status = fields.get(
+        "status",
+        {}
+    )
+
+    if isinstance(status, dict):
+        return status.get(
+            "name",
+            ""
+        )
+
+    return status or ""
+
+
 def _fetch_jira_issues(
     email,
     api_token,
     jql,
     fields,
-    max_pages=None,
-    log_pages=False
+    max_pages=None
 ):
 
     url = JIRA_URL
@@ -888,14 +921,6 @@ def _fetch_jira_issues(
             []
         )
 
-        if log_pages:
-            print(
-                f"PAGE: {len(all_issues)} "
-                f"+ {len(issues)} "
-                f"isLast={data.get('isLast')} "
-                f"token={bool(data.get('nextPageToken'))}"
-            )
-
         all_issues.extend(
             issues
         )
@@ -909,8 +934,6 @@ def _fetch_jira_issues(
             "isLast",
             True
         ):
-            if log_pages:
-                print("REACHED LAST PAGE")
             break
 
         next_page_token = data.get(
@@ -950,10 +973,7 @@ def fetch_jira_tickets(
 
     for issue in all_issues:
 
-        fields = issue.get(
-            "fields",
-            {}
-        )
+        fields = _issue_fields(issue)
 
         description = fields.get(
             "description",
@@ -974,7 +994,7 @@ def fetch_jira_tickets(
         
         tickets.append(
             {
-                "key": issue["key"],
+                "key": _issue_key(issue),
                 "client": client,
                 "summary":
                     summary,
@@ -1036,10 +1056,7 @@ def fetch_wazuh_jira_tickets(
 
     for issue in all_issues:
 
-        fields = issue.get(
-            "fields",
-            {}
-        )
+        fields = _issue_fields(issue)
 
         tenant_values = fields.get(
             WAZUH_JIRA_TENANT_FIELD
@@ -1069,7 +1086,7 @@ def fetch_wazuh_jira_tickets(
 
         tickets.append(
             {
-                "key": issue["key"],
+                "key": _issue_key(issue),
                 "client": client,
                 "summary":
                     fields.get(
@@ -1112,13 +1129,12 @@ def fetch_wazuh_jira_tickets_for_correlation(
             WAZUH_JIRA_TENANT_FIELD
         ],
         max_pages=max_pages,
-        log_pages=False
     )
 
     tickets = []
 
     for issue in all_issues:
-        fields = issue.get("fields", {})
+        fields = _issue_fields(issue)
 
         parsed_fields = _parse_adf_table_fields(
             fields.get("description", {})
@@ -1159,17 +1175,12 @@ def fetch_wazuh_jira_tickets_for_correlation(
             parsed_fields
         )
 
-        status = fields.get("status", {})
-
-        if isinstance(status, dict):
-            status = status.get("name", "")
-
         tickets.append(
             {
-                "jira_key": issue.get("key", ""),
+                "jira_key": _issue_key(issue),
                 "created": fields.get("created", ""),
                 "summary": fields.get("summary", ""),
-                "status": status or "",
+                "status": _jira_status_name(fields),
                 "tenant_field": tenant_field,
                 "wazuh_alert_id": _get_wazuh_table_value(
                     parsed_fields,
@@ -1255,16 +1266,12 @@ def fetch_microsoft_sentinel_jira_tickets(
             WAZUH_JIRA_TENANT_FIELD
         ],
         max_pages=max_pages,
-        log_pages=False
     )
 
     tickets = []
 
     for issue in all_issues:
-        fields = issue.get(
-            "fields",
-            {}
-        )
+        fields = _issue_fields(issue)
 
         summary = fields.get(
             "summary",
@@ -1281,17 +1288,6 @@ def fetch_microsoft_sentinel_jira_tickets(
         if jira_tenant not in tenant_values:
             continue
 
-        status = fields.get(
-            "status",
-            {}
-        )
-
-        if isinstance(status, dict):
-            status = status.get(
-                "name",
-                ""
-            )
-
         description = fields.get(
             "description",
             {}
@@ -1299,8 +1295,8 @@ def fetch_microsoft_sentinel_jira_tickets(
 
         tickets.append(
             {
-                "key": issue.get("key", ""),
-                "jira_key": issue.get("key", ""),
+                "key": _issue_key(issue),
+                "jira_key": _issue_key(issue),
                 "client": client_name,
                 "strict_client": client_name,
                 "tenant_field": jira_tenant,
@@ -1309,7 +1305,7 @@ def fetch_microsoft_sentinel_jira_tickets(
                     "created",
                     ""
                 ),
-                "status": status or "",
+                "status": _jira_status_name(fields),
                 **_extract_microsoft_sentinel_jira_evidence(
                     description
                 )
@@ -1363,10 +1359,7 @@ def fetch_securonix_jira_tickets(
 
     for issue in all_issues:
 
-        fields = issue.get(
-            "fields",
-            {}
-        )
+        fields = _issue_fields(issue)
 
         description = fields.get(
             "description",
@@ -1406,7 +1399,7 @@ def fetch_securonix_jira_tickets(
 
         tickets.append(
             {
-                "key": issue["key"],
+                "key": _issue_key(issue),
                 "client": client,
                 "summary":
                     summary,
