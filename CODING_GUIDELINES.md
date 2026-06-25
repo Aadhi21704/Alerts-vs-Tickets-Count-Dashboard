@@ -342,6 +342,15 @@ Particularly validate:
 * Source tags
 * Client drilldowns
 
+For lightweight local validation after code changes, run:
+
+```powershell
+python scripts/smoke_check.py
+```
+
+If `latest.json` is missing or stale, run `python run.py` first and then run
+the smoke check again.
+
 ---
 
 # Future Tool Integrations

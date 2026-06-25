@@ -270,7 +270,7 @@ Dashboard status labels should use coverage-first SOC semantics:
   pagination/window mismatch, Jira/source refresh timing, duplicates, stale
   tickets, or real triage.
 
-Do not use `Triaging` as the visible dashboard status for extra-ticket states.
+Use `Review` as the visible dashboard status for extra-ticket states.
 
 Delta display rules:
 

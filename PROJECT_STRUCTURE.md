@@ -382,7 +382,7 @@ SOC coverage language:
   API delay, pagination/window mismatch, Jira/source refresh timing,
   duplicates, stale tickets, or real triage
 
-The dashboard label is `Review`, not `Triaging`.
+The dashboard label for extra-ticket states is `Review`.
 
 Coverage deltas are `correlated_ticket_count - alert_count`. Equal coverage
 is `0`, missing tickets are negative values, and extra tickets are reported

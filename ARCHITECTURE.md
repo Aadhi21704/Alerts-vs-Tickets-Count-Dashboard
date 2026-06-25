@@ -165,7 +165,7 @@ Metadata drift is secondary evidence. It must not become the primary red
 coverage state by itself.
 
 The visible dashboard wording is `Equal`, `Mismatch`, and `Review`. Do not
-reintroduce `Triaging` as a status label for count-based extra-ticket states.
+introduce alternate extra-ticket status labels without explicit approval.
 
 ---
 
