@@ -143,7 +143,7 @@
                     </p>
                     <h2>
                         {% if is_wazuh %}
-                            Wazuh Rule Evidence
+                            Wazuh Alert Evidence
                         {% else %}
                             {{ evidence_label }}
                         {% endif %}
@@ -161,11 +161,10 @@
                     {% if is_wazuh %}
                     <div class="evidence-row-heading">
                         <code>Rule {{ alert.rule_id | default("-") }}</code>
-                        <span>Count {{ alert.count | default(0) }}</span>
                     </div>
                     <span>
-                        Sample Alert ID:
-                        {{ alert.sample_alert_id | default("-") }}
+                        Alert ID:
+                        {{ alert.wazuh_alert_id | default(alert.alert_id) | default(alert.id) | default("-") }}
                     </span>
                     <span>
                         Time: {{ alert.display_time or "-" }}
@@ -215,7 +214,7 @@
             {% else %}
             <div class="evidence-empty">
                 {% if tool.tool_key == "wazuh" %}
-                    No Wazuh grouped source evidence is available for
+                    No Wazuh alert evidence is available for
                     this client.
                 {% elif tool.tool_key == "securonix" %}
                     No incident IDs available for this source.

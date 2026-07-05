@@ -461,10 +461,7 @@ def _collect_wazuh(
 
         logger.info(
             f"Wazuh: "
-            f"{sum(
-                record['count']
-                for record in wazuh_alert_counts
-            )} alerts retrieved"
+            f"{len(wazuh_alert_counts)} alerts retrieved"
         )
 
         wazuh_jira_tickets = (

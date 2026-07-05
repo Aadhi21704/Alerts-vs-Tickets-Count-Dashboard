@@ -1186,6 +1186,10 @@ def fetch_wazuh_jira_tickets_for_correlation(
                     parsed_fields,
                     "id"
                 ),
+                "alert_id": _get_wazuh_table_value(
+                    parsed_fields,
+                    "id"
+                ),
                 "rule_id": _get_nested_wazuh_value(
                     parsed_fields,
                     "rule",

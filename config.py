@@ -87,7 +87,7 @@ WAZUH_ALERT_WINDOW_HOURS = 24
 WAZUH_JIRA_WINDOW_HOURS = 24
 
 WAZUH_URL = (
-    "https://whb.nopalcyber.com/api/v1/integrations/wazuh-alert-counts"
+    "https://whb.nopalcyber.com/api/v1/integrations/wazuh-alerts"
 )
 
 WAZUH_MIN_RULE_LEVEL = 5

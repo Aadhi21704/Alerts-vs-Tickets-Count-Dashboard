@@ -11,41 +11,86 @@ from config import (
 )
 
 
-def _safe_wazuh_by_rule_evidence(rule_row):
+def _clean_string(value):
+    if value is None:
+        return ""
 
-    if not isinstance(rule_row, dict):
+    return str(value).strip()
+
+
+def _safe_wazuh_alert(row):
+    if not isinstance(row, dict):
         return None
 
-    return {
-        # WHB by_rule is grouped; this is a representative alert id sample.
-        "sample_alert_id": str(
-            rule_row.get(
-                "id",
-                ""
-            )
-        ),
-        "rule_id": str(
-            rule_row.get(
-                "rule_id",
-                ""
-            )
-        ),
-        "count": rule_row.get(
-            "count",
-            0
-        ),
-        "level": rule_row.get(
-            "level",
-            ""
-        ),
-        "location": rule_row.get(
-            "location",
-            ""
-        ),
-        "description": rule_row.get(
-            "description",
-            ""
+    client_data = row.get("client", {})
+    agent_data = row.get("agent", {})
+
+    if not isinstance(client_data, dict):
+        client_data = {}
+
+    if not isinstance(agent_data, dict):
+        agent_data = {}
+
+    raw_client = _clean_string(
+        client_data.get("name")
+    )
+
+    if raw_client not in WAZUH_ALLOWED_CLIENTS:
+        return None
+
+    client = _clean_string(
+        WAZUH_CLIENT_MAPPING.get(
+            raw_client,
+            raw_client
         )
+    )
+
+    alert_id = _clean_string(
+        row.get("alert_id")
+    )
+
+    if not alert_id:
+        return None
+
+    timestamp = _clean_string(
+        row.get("timestamp")
+    )
+
+    level = row.get("level", "")
+
+    return {
+        "tool": "Wazuh",
+        "id": alert_id,
+        "wazuh_alert_id": alert_id,
+        "alert_id": alert_id,
+        "source_id": alert_id,
+        "client": client,
+        "client_id": _clean_string(
+            client_data.get("id")
+        ),
+        "client_code": _clean_string(
+            client_data.get("code")
+        ),
+        "timestamp": timestamp,
+        "created_at": timestamp,
+        "rule_id": _clean_string(
+            row.get("rule_id")
+        ),
+        "level": level,
+        "rule_level": level,
+        "description": _clean_string(
+            row.get("description")
+        ),
+        "location": _clean_string(
+            row.get("location")
+        ),
+        "agent_id": _clean_string(
+            agent_data.get("id")
+        ),
+        "agent_name": _clean_string(
+            agent_data.get("name")
+        ),
+        "source": "wazuh"
     }
 
 
@@ -84,7 +129,7 @@ def fetch_wazuh_alerts(api_key):
 
     data = response.json()
 
-    if data.get("aggregation") != "latest_per_client":
+    if data.get("aggregation") != "per_alert":
         raise ValueError(
             "Unexpected Wazuh aggregation"
         )
@@ -113,114 +158,20 @@ def fetch_wazuh_alerts(api_key):
             "Invalid Wazuh rows response"
         )
 
-    allowed_clients = set(
-        WAZUH_ALLOWED_CLIENTS
-    )
-
-    client_records = {}
+    alerts = []
 
     for row in rows:
+        alert = _safe_wazuh_alert(row)
 
-        if not isinstance(row, dict):
-            raise ValueError(
-                "Invalid Wazuh row"
-            )
+        if alert is not None:
+            alerts.append(alert)
 
-        client_data = row.get(
-            "client",
-            {}
+    alerts.sort(
+        key=lambda alert: (
+            alert.get("client", "").casefold(),
+            alert.get("timestamp", ""),
+            alert.get("wazuh_alert_id", "")
         )
+    )
 
-        if not isinstance(client_data, dict):
-            raise ValueError(
-                "Invalid Wazuh client"
-            )
-
-        raw_client = client_data.get(
-            "name",
-            ""
-        )
-
-        if not isinstance(raw_client, str):
-            raise ValueError(
-                "Invalid Wazuh client name"
-            )
-
-        raw_client = raw_client.strip()
-
-        if raw_client not in allowed_clients:
-            continue
-
-        total_count = row.get(
-            "total_count"
-        )
-
-        if (
-            type(total_count) is not int
-            or
-            total_count < 0
-        ):
-            raise ValueError(
-                "Invalid Wazuh total_count for "
-                f"{raw_client}"
-            )
-
-        client = WAZUH_CLIENT_MAPPING.get(
-            raw_client,
-            raw_client
-        ).strip()
-
-        if client not in client_records:
-            client_records[client] = {
-                "count": 0,
-                "wazuh_source_evidence": []
-            }
-
-        client_records[client]["count"] += (
-            total_count
-        )
-
-        by_rule = row.get(
-            "by_rule",
-            []
-        )
-
-        if not isinstance(by_rule, list):
-            raise ValueError(
-                "Invalid Wazuh by_rule response for "
-                f"{raw_client}"
-            )
-
-        for rule_row in by_rule:
-
-            evidence = _safe_wazuh_by_rule_evidence(
-                rule_row
-            )
-
-            if evidence is None:
-                raise ValueError(
-                    "Invalid Wazuh by_rule row for "
-                    f"{raw_client}"
-                )
-
-            client_records[client][
-                "wazuh_source_evidence"
-            ].append(
-                evidence
-            )
-
-    return [
-        {
-            "tool": "Wazuh",
-            "client": client,
-            "count": record["count"],
-            "alerts": record[
-                "wazuh_source_evidence"
-            ],
-            "wazuh_source_evidence":
-                record["wazuh_source_evidence"],
-            "source": "wazuh"
-        }
-        for client, record
-        in sorted(client_records.items())
-    ]
+    return alerts

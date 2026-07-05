@@ -204,6 +204,53 @@ def check_status_values(
         )
 
 
+
+def check_wazuh_per_alert_identifiers(
+    data: dict,
+    errors: list[str]
+) -> None:
+    for tool in data.get("tools", []):
+        if not isinstance(tool, dict):
+            continue
+
+        if tool.get("tool_key") != "wazuh":
+            continue
+
+        for client in tool.get("clients", []):
+            if not isinstance(client, dict):
+                continue
+
+            evidence_rows = client.get(
+                "wazuh_source_evidence",
+                client.get(
+                    "source_evidence",
+                    []
+                )
+            )
+
+            if not isinstance(evidence_rows, list):
+                continue
+
+            for row in evidence_rows:
+                if not isinstance(row, dict):
+                    continue
+
+                has_exact_alert_id = any(
+                    row.get(field_name)
+                    for field_name in (
+                        "wazuh_alert_id",
+                        "alert_id",
+                        "id"
+                    )
+                )
+
+                if row.get("sample_alert_id") and not has_exact_alert_id:
+                    errors.append(
+                        "Wazuh evidence still relies on sample_alert_id "
+                        "without exact alert_id fields."
+                    )
+                    return
+
 def text_files_under(path: Path):
     if path.is_file():
         yield path
@@ -266,6 +313,10 @@ def main() -> int:
             warnings
         )
         check_status_values(
+            data,
+            errors
+        )
+        check_wazuh_per_alert_identifiers(
             data,
             errors
         )

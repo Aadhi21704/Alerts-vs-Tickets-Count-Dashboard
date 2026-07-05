@@ -310,8 +310,8 @@ def display_identifier(record, tool_key):
         return first_present(
             record,
             (
-                "sample_alert_id",
                 "wazuh_alert_id",
+                "alert_id",
                 "id",
                 "rule_id"
             )
@@ -364,8 +364,8 @@ def source_match_identifiers(record, tool_key):
         )
     elif tool_key == "wazuh":
         fields = (
-            "sample_alert_id",
-            "rule_id",
+            "wazuh_alert_id",
+            "alert_id",
             "id"
         )
     else:
@@ -406,7 +406,7 @@ def ticket_match_identifiers(record, tool_key):
     elif tool_key == "wazuh":
         fields = (
             "wazuh_alert_id",
-            "rule_id"
+            "alert_id"
         )
     else:
         fields = ("key", "jira_key")
