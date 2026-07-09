@@ -746,7 +746,8 @@ def _mismatch_notification_payload(tool, client, timestamp):
             "extra_ticket_count",
             0
         ),
-        "timestamp": timestamp
+        "timestamp": timestamp,
+        "client_data": client
     }
 
 
