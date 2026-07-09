@@ -22,6 +22,8 @@ REQUIRED_FILES = (
     "collectors/securonix.py",
     "collectors/microsoft_sentinel.py",
     "comparison/comparator.py",
+    "notifications/teams.py",
+    "scripts/test_teams_notification.py",
 )
 
 EXPECTED_TOOL_KEYS = {
@@ -298,6 +300,43 @@ def check_old_extra_ticket_label(errors: list[str]) -> None:
         )
 
 
+
+def check_notification_safety(errors: list[str]) -> None:
+    gitignore_path = project_path(".gitignore")
+
+    if not gitignore_path.exists():
+        errors.append(".gitignore is missing.")
+        return
+
+    gitignore_content = gitignore_path.read_text(
+        encoding="utf-8"
+    )
+
+    ignored_entries = {
+        line.strip()
+        for line in gitignore_content.splitlines()
+    }
+
+    if "notification_state.json" not in ignored_entries:
+        errors.append(
+            "notification_state.json must be ignored by git."
+        )
+
+    config_path = project_path("config.py")
+    config_content = config_path.read_text(
+        encoding="utf-8"
+    )
+
+    unsafe_markers = (
+        "TEAMS_WEBHOOK_URL = \"http://",
+        "TEAMS_WEBHOOK_URL = \"https://"
+    )
+
+    if any(marker in config_content for marker in unsafe_markers):
+        errors.append(
+            "TEAMS_WEBHOOK_URL must not be hardcoded in config.py."
+        )
+
 def main() -> int:
     errors: list[str] = []
     warnings: list[str] = []
@@ -322,6 +361,7 @@ def main() -> int:
         )
 
     check_old_extra_ticket_label(errors)
+    check_notification_safety(errors)
 
     print("Smoke check")
     print(f"  files: {'ok' if not errors else 'checked'}")

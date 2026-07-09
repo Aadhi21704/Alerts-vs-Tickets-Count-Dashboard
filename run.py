@@ -48,6 +48,12 @@ from comparison.comparator import (
     compare_wazuh_correlation_data
 )
 
+from notifications.teams import (
+    send_teams_mismatch_notification,
+    teams_notifications_enabled,
+    teams_webhook_configured
+)
+
 urllib3.disable_warnings(
     urllib3.exceptions.InsecureRequestWarning
 )
@@ -55,6 +61,7 @@ urllib3.disable_warnings(
 load_dotenv()
 
 DATA_FILE = Path("latest.json")
+NOTIFICATION_STATE_FILE = Path("notification_state.json")
 
 
 def _utc_now():
@@ -615,6 +622,273 @@ def _collect_securonix(
         )
 
 
+def _load_notification_state():
+    if not NOTIFICATION_STATE_FILE.exists():
+        return {
+            "sent_mismatch_keys": []
+        }
+
+    try:
+        with NOTIFICATION_STATE_FILE.open(
+            "r",
+            encoding="utf-8"
+        ) as handle:
+            state = json.load(handle)
+    except Exception:
+        logger.warning(
+            "Unable to read notification_state.json"
+        )
+        return {
+            "sent_mismatch_keys": []
+        }
+
+    if not isinstance(state, dict):
+        return {
+            "sent_mismatch_keys": []
+        }
+
+    sent_keys = state.get(
+        "sent_mismatch_keys",
+        []
+    )
+
+    if not isinstance(sent_keys, list):
+        sent_keys = []
+
+    return {
+        "sent_mismatch_keys": [
+            str(key)
+            for key in sent_keys
+            if key
+        ]
+    }
+
+
+def _write_notification_state(state):
+    try:
+        _atomic_write_json(
+            NOTIFICATION_STATE_FILE,
+            state
+        )
+    except Exception as exception:
+        logger.warning(
+            "Unable to update notification_state.json: %s",
+            type(exception).__name__
+        )
+
+
+def _mismatch_dedupe_key(tool, client):
+    return "|".join([
+        str(
+            tool.get(
+                "tool_key",
+                ""
+            )
+        ),
+        str(
+            client.get(
+                "client",
+                ""
+            )
+        ),
+        str(
+            client.get(
+                "status",
+                ""
+            )
+        ),
+        str(
+            client.get(
+                "missing_ticket_count",
+                0
+            )
+        ),
+        str(
+            client.get(
+                "extra_ticket_count",
+                0
+            )
+        )
+    ])
+
+
+def _mismatch_notification_payload(tool, client, timestamp):
+    return {
+        "title": "Dashboard mismatch detected",
+        "tool_name": tool.get(
+            "tool",
+            tool.get(
+                "tool_key",
+                "-"
+            )
+        ),
+        "tool_key": tool.get(
+            "tool_key",
+            "-"
+        ),
+        "client": client.get(
+            "client",
+            "-"
+        ),
+        "alert_count": client.get(
+            "alert_count",
+            0
+        ),
+        "ticket_count": client.get(
+            "ticket_count",
+            0
+        ),
+        "missing_ticket_count": client.get(
+            "missing_ticket_count",
+            0
+        ),
+        "extra_ticket_count": client.get(
+            "extra_ticket_count",
+            0
+        ),
+        "timestamp": timestamp
+    }
+
+
+
+def _is_notification_worthy_mismatch(client):
+    status = client.get(
+        "status"
+    )
+
+    if status not in {
+        "Mismatch",
+        "Missing Tickets"
+    }:
+        return False
+
+    try:
+        missing_ticket_count = int(
+            client.get(
+                "missing_ticket_count",
+                0
+            ) or 0
+        )
+    except (TypeError, ValueError):
+        missing_ticket_count = 0
+
+    return missing_ticket_count > 0
+
+
+def _send_mismatch_notifications(dashboard_data):
+    logger.info(
+        "Teams notification scan started"
+    )
+
+    enabled = teams_notifications_enabled()
+
+    logger.info(
+        "Teams notifications are %s",
+        "enabled" if enabled else "disabled"
+    )
+
+    if enabled and not teams_webhook_configured():
+        logger.warning(
+            "Teams notifications enabled but webhook URL is missing"
+        )
+
+    state = _load_notification_state()
+    sent_keys = set(
+        state.get(
+            "sent_mismatch_keys",
+            []
+        )
+    )
+    updated_keys = set(sent_keys)
+    clients_scanned = 0
+    notification_worthy_clients = 0
+    non_notification_worthy_clients = 0
+    dedupe_skips = 0
+    attempts = 0
+
+    for tool in dashboard_data.get(
+        "tools",
+        []
+    ):
+        if not isinstance(tool, dict):
+            continue
+
+        for client in tool.get(
+            "clients",
+            []
+        ):
+            if not isinstance(client, dict):
+                continue
+
+            clients_scanned += 1
+
+            if not _is_notification_worthy_mismatch(client):
+                non_notification_worthy_clients += 1
+                continue
+
+            notification_worthy_clients += 1
+            dedupe_key = _mismatch_dedupe_key(
+                tool,
+                client
+            )
+
+            if dedupe_key in sent_keys:
+                dedupe_skips += 1
+                logger.info(
+                    "Teams notification-worthy mismatch skipped by dedupe: "
+                    "tool_key=%s client=%s missing=%s extra=%s",
+                    tool.get("tool_key", "-"),
+                    client.get("client", "-"),
+                    client.get("missing_ticket_count", 0),
+                    client.get("extra_ticket_count", 0)
+                )
+                continue
+
+            attempts += 1
+            logger.info(
+                "Teams notification-worthy mismatch attempted: "
+                "tool_key=%s client=%s missing=%s extra=%s",
+                tool.get("tool_key", "-"),
+                client.get("client", "-"),
+                client.get("missing_ticket_count", 0),
+                client.get("extra_ticket_count", 0)
+            )
+
+            sent = send_teams_mismatch_notification(
+                _mismatch_notification_payload(
+                    tool,
+                    client,
+                    dashboard_data.get(
+                        "timestamp",
+                        ""
+                    )
+                )
+            )
+
+            if sent:
+                updated_keys.add(
+                    dedupe_key
+                )
+
+    logger.info(
+        "Teams notification scan summary: clients_scanned=%s "
+        "notification_worthy_mismatch_clients=%s "
+        "non_notification_worthy_clients=%s "
+        "dedupe_skips=%s attempts=%s",
+        clients_scanned,
+        notification_worthy_clients,
+        non_notification_worthy_clients,
+        dedupe_skips,
+        attempts
+    )
+
+    if updated_keys != sent_keys:
+        _write_notification_state({
+            "sent_mismatch_keys": sorted(
+                updated_keys
+            )
+        })
+
 def _collection_status(tools):
     successes = sum(
         1
@@ -699,6 +973,10 @@ def main():
 
     _atomic_write_json(
         DATA_FILE,
+        dashboard_data
+    )
+
+    _send_mismatch_notifications(
         dashboard_data
     )
 
