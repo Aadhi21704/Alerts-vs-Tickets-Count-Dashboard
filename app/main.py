@@ -4,7 +4,7 @@ from datetime import timezone
 import json
 import scheduler
 from zoneinfo import ZoneInfo
-from config import REFRESH_INTERVAL_MINUTES
+from config import JIRA_URL, REFRESH_INTERVAL_MINUTES
 from fastapi import FastAPI
 from fastapi import HTTPException
 from fastapi import Request
@@ -16,6 +16,40 @@ app = FastAPI(title="SentinelOne Jira Dashboard")
 
 BASE_DIR = Path(__file__).resolve().parent.parent
 DATA_FILE = BASE_DIR / "latest.json"
+
+
+def jira_browse_base_url():
+    return JIRA_URL.split(
+        "/rest/",
+        1
+    )[0]
+
+
+def jira_ticket_url(record):
+    existing_url = first_present(
+        record,
+        (
+            "ticket_url",
+            "browse_url",
+            "url"
+        )
+    )
+
+    if existing_url:
+        return existing_url
+
+    ticket_key = first_present(
+        record,
+        (
+            "key",
+            "jira_key"
+        )
+    )
+
+    if not ticket_key:
+        return ""
+
+    return f"{jira_browse_base_url()}/browse/{ticket_key}"
 
 app.mount("/static", StaticFiles(directory="app/static"), name="static")
 
@@ -444,6 +478,11 @@ def enrich_record(record, tool_key, record_type):
     )
     enriched["display_time"] = enriched["_display_timestamp"]
 
+
+    if record_type == "ticket":
+        enriched["ticket_url"] = jira_ticket_url(
+            enriched
+        )
     return enriched
 
 

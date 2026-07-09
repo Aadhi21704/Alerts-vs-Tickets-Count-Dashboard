@@ -31,6 +31,7 @@
         client.get("wazuh_source_evidence", alerts)
     ) %}
     {% set is_wazuh = tool.tool_key == "wazuh" %}
+    {% set is_sentinelone = tool.tool_key == "sentinelone" %}
     {% set display_status = client.get(
         "coverage_display_status",
         client.status
@@ -174,6 +175,52 @@
                     <p class="evidence-description">
                         {{ alert.description | default("-") }}
                     </p>
+                    {% elif is_sentinelone %}
+                    <div class="evidence-row-heading">
+                        <code>{{ alert.sentinelone_threat_id | default(alert.sentinelone_source_id) | default(alert.display_id) | default(alert.id) }}</code>
+                        {% if alert.sentinelone_detection_type %}
+                        <span>{{ alert.sentinelone_detection_type }}</span>
+                        {% endif %}
+                    </div>
+                    {% if alert.sentinelone_source_id %}
+                    <span>Source ID: {{ alert.sentinelone_source_id }}</span>
+                    {% endif %}
+                    <span>
+                        Time: {{ alert.display_time or "-" }}
+                    </span>
+                    {% if alert.sentinelone_threat_name %}
+                    <span>Threat Name: {{ alert.sentinelone_threat_name }}</span>
+                    {% endif %}
+                    {% if alert.sentinelone_incident_status %}
+                    <span>Status: {{ alert.sentinelone_incident_status }}</span>
+                    {% endif %}
+                    {% if alert.severity %}
+                    <span>Severity: {{ alert.severity }}</span>
+                    {% endif %}
+                    {% if alert.confidence %}
+                    <span>Confidence: {{ alert.confidence }}</span>
+                    {% endif %}
+                    {% if alert.classification %}
+                    <span>Classification: {{ alert.classification }}</span>
+                    {% endif %}
+                    {% if alert.analyst_verdict %}
+                    <span>Analyst Verdict: {{ alert.analyst_verdict }}</span>
+                    {% endif %}
+                    {% if alert.endpoint_name %}
+                    <span>Endpoint: {{ alert.endpoint_name }}</span>
+                    {% endif %}
+                    {% if alert.agent_name %}
+                    <span>Agent: {{ alert.agent_name }}</span>
+                    {% endif %}
+                    {% if alert.computerName %}
+                    <span>Computer: {{ alert.computerName }}</span>
+                    {% endif %}
+                    {% if alert.site %}
+                    <span>Site: {{ alert.site }}</span>
+                    {% endif %}
+                    {% if alert.client %}
+                    <span>Client: {{ alert.client }}</span>
+                    {% endif %}
                     {% else %}
                     <code>{{ alert.display_id or alert.id }}</code>
                     <span>
@@ -242,13 +289,14 @@
             <ul class="identifier-list">
                 {% for ticket in display_tickets %}
                 <li>
+                    {% set ticket_key = ticket.key | default(ticket.jira_key) %}
                     <a
                         class="ticket-link"
-                        href="https://nopalcyber.atlassian.net/browse/{{ ticket.key | default(ticket.jira_key) }}"
+                        href="{{ ticket.ticket_url }}"
                         target="_blank"
                         rel="noopener noreferrer"
                     >
-                        {{ ticket.key | default(ticket.jira_key) }}
+                        {{ ticket_key }}
                     </a>
                     {% if ticket.rule_id %}
                     <span>Rule: {{ ticket.rule_id }}</span>
@@ -262,6 +310,26 @@
                     <span>
                         Time: {{ ticket.display_time or "-" }}
                     </span>
+                    {% if is_sentinelone %}
+                        {% if ticket.summary %}
+                        <span>Summary: {{ ticket.summary }}</span>
+                        {% endif %}
+                        {% if ticket.sentinelone_threat_id %}
+                        <span>SentinelOne Threat ID: {{ ticket.sentinelone_threat_id }}</span>
+                        {% endif %}
+                        {% if ticket.sentinelone_threat_url_id %}
+                        <span>SentinelOne URL ID: {{ ticket.sentinelone_threat_url_id }}</span>
+                        {% endif %}
+                        {% if ticket.client %}
+                        <span>Client: {{ ticket.client }}</span>
+                        {% endif %}
+                        {% if ticket.strict_client %}
+                        <span>Tenant/Site: {{ ticket.strict_client }}</span>
+                        {% endif %}
+                        {% if ticket.match_status %}
+                        <span>Match: {{ ticket.match_status }}</span>
+                        {% endif %}
+                    {% endif %}
                     {% if ticket.microsoft_sentinel_incident_id %}
                     <span>
                         Incident ID:
