@@ -140,6 +140,88 @@ def _get_adf_text_with_links(node):
     )
 
 
+
+
+def _iter_adf_table_rows(description):
+    try:
+        for section in description.get(
+            "content",
+            []
+        ):
+            if section.get("type") != "table":
+                continue
+
+            for row in section.get(
+                "content",
+                []
+            ):
+                cells = row.get(
+                    "content",
+                    []
+                )
+
+                if len(cells) < 2:
+                    continue
+
+                yield (
+                    _get_adf_text_with_links(cells[0]).strip(),
+                    _get_adf_text_with_links(cells[1]).strip()
+                )
+    except Exception:
+        return
+
+
+def _safe_json_loads(value):
+    if not isinstance(value, str) or not value.strip():
+        return None
+
+    try:
+        return json.loads(value)
+    except (TypeError, ValueError, json.JSONDecodeError):
+        return None
+
+
+def _find_json_value(data, key_name):
+    if isinstance(data, dict):
+        for key, value in data.items():
+            if str(key).lower() == key_name.lower():
+                return value
+
+            nested_value = _find_json_value(
+                value,
+                key_name
+            )
+
+            if nested_value not in (None, ""):
+                return nested_value
+
+    if isinstance(data, list):
+        for item in data:
+            nested_value = _find_json_value(
+                item,
+                key_name
+            )
+
+            if nested_value not in (None, ""):
+                return nested_value
+
+    return None
+
+
+def _first_field_value(value):
+    if isinstance(value, list):
+        for item in value:
+            if isinstance(item, str) and item.strip():
+                return item.strip()
+
+        return ""
+
+    if isinstance(value, str):
+        return value.strip()
+
+    return ""
+
+
 _SENTINELONE_THREAT_ID_PATTERNS = [
     re.compile(
         r"(?i)\bSentinelOne\s+Threat\s+ID\b\s*[:=]?\s*"
@@ -211,6 +293,68 @@ _MS_SENTINEL_URL_PATTERN = re.compile(
 )
 
 
+def _extract_sentinelone_adf_table_values(description):
+    values = {
+        "threat_ids": [],
+        "site_names": []
+    }
+
+    for label, raw_value in _iter_adf_table_rows(description):
+        normalized_label = label.strip().lower()
+
+        if normalized_label not in {
+            "threatinfo",
+            "agentdetectioninfo",
+            "agentrealtimeinfo"
+        }:
+            continue
+
+        parsed_value = _safe_json_loads(raw_value)
+
+        if parsed_value is None:
+            continue
+
+        if normalized_label == "threatinfo":
+            threat_id = _clean_sentinelone_identifier(
+                str(
+                    _find_json_value(
+                        parsed_value,
+                        "threatId"
+                    ) or ""
+                )
+            )
+
+            if threat_id:
+                values["threat_ids"].append(threat_id)
+
+        if normalized_label in {
+            "agentdetectioninfo",
+            "agentrealtimeinfo"
+        }:
+            site_name = str(
+                _find_json_value(
+                    parsed_value,
+                    "siteName"
+                ) or ""
+            ).strip()
+
+            if site_name:
+                values["site_names"].append(site_name)
+
+    return values
+
+
+def _extract_sentinelone_site_name_from_adf(description):
+    values = _extract_sentinelone_adf_table_values(
+        description
+    )
+
+    for site_name in values["site_names"]:
+        if site_name:
+            return site_name
+
+    return ""
+
 def _clean_sentinelone_identifier(value):
     if not isinstance(value, str):
         return ""
@@ -242,6 +386,14 @@ def _extract_sentinelone_jira_evidence(summary, description):
 
             if threat_id:
                 threat_ids.append(threat_id)
+
+    adf_table_values = _extract_sentinelone_adf_table_values(
+        description
+    )
+
+    threat_ids.extend(
+        adf_table_values["threat_ids"]
+    )
 
     threat_url_ids = []
 
@@ -965,7 +1117,8 @@ def fetch_jira_tickets(
         [
             "summary",
             "created",
-            "description"
+            "description",
+            WAZUH_JIRA_TENANT_FIELD
         ]
     )
 
@@ -990,6 +1143,15 @@ def fetch_jira_tickets(
         )
 
         if client == "Unknown":
+            client = _first_field_value(
+                fields.get(
+                    WAZUH_JIRA_TENANT_FIELD
+                )
+            ) or _extract_sentinelone_site_name_from_adf(
+                description
+            )
+
+        if client == "Unknown" or not client:
             continue
         
         tickets.append(
