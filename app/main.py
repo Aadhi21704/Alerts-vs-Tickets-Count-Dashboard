@@ -617,6 +617,156 @@ def align_evidence_records(alerts, tickets, tool_key):
     )
 
 
+def combined_ticket_records(client):
+    records = []
+    seen_keys = set()
+
+    for ticket_list_name in (
+        "strict_tickets",
+        "tickets",
+        "jira_tickets"
+    ):
+        for ticket in client.get(ticket_list_name, []) or []:
+            ticket_key = first_present(
+                ticket,
+                (
+                    "key",
+                    "jira_key",
+                    "sentinelone_threat_id",
+                    "wazuh_alert_id",
+                    "securonix_incident_id",
+                    "microsoft_sentinel_incident_arm_id"
+                )
+            )
+            dedupe_key = (
+                str(ticket_key)
+                if ticket_key
+                else str(id(ticket))
+            )
+
+            if dedupe_key in seen_keys:
+                continue
+
+            seen_keys.add(dedupe_key)
+            records.append(ticket)
+
+    return records
+
+
+def build_paired_rows(alerts, tickets, tool_key):
+    enriched_alerts = [
+        enrich_record(
+            alert,
+            tool_key,
+            "source"
+        )
+        for alert in alerts
+    ]
+    enriched_tickets = [
+        enrich_record(
+            ticket,
+            tool_key,
+            "ticket"
+        )
+        for ticket in tickets
+    ]
+
+    ticket_indexes_by_identifier = {}
+
+    for ticket_index, ticket in enumerate(enriched_tickets):
+        for identifier in ticket_match_identifiers(
+            ticket,
+            tool_key
+        ):
+            ticket_indexes_by_identifier.setdefault(
+                identifier,
+                []
+            ).append(ticket_index)
+
+    used_ticket_indexes = set()
+    paired_rows = []
+
+    for alert in enriched_alerts:
+        matched_ticket_index = None
+
+        for identifier in source_match_identifiers(
+            alert,
+            tool_key
+        ):
+            for ticket_index in ticket_indexes_by_identifier.get(
+                identifier,
+                []
+            ):
+                if ticket_index not in used_ticket_indexes:
+                    matched_ticket_index = ticket_index
+                    break
+
+            if matched_ticket_index is not None:
+                break
+
+        if matched_ticket_index is None:
+            paired_rows.append(
+                {
+                    "row_type": "missing_ticket",
+                    "priority": 0,
+                    "alert": alert,
+                    "ticket": None,
+                    "sort_timestamp": _sort_timestamp(alert)
+                }
+            )
+            continue
+
+        used_ticket_indexes.add(
+            matched_ticket_index
+        )
+        ticket = enriched_tickets[
+            matched_ticket_index
+        ]
+        paired_rows.append(
+            {
+                "row_type": "matched",
+                "priority": 2,
+                "alert": alert,
+                "ticket": ticket,
+                "sort_timestamp": max(
+                    _sort_timestamp(alert),
+                    _sort_timestamp(ticket)
+                )
+            }
+        )
+
+    for ticket_index, ticket in enumerate(enriched_tickets):
+        if ticket_index in used_ticket_indexes:
+            continue
+
+        paired_rows.append(
+            {
+                "row_type": "extra_ticket",
+                "priority": 1,
+                "alert": None,
+                "ticket": ticket,
+                "sort_timestamp": _sort_timestamp(ticket)
+            }
+        )
+
+    grouped_rows = []
+
+    for priority in (0, 1, 2):
+        rows = [
+            row for row in paired_rows
+            if row["priority"] == priority
+        ]
+        rows.sort(
+            key=lambda row: row.get(
+                "sort_timestamp",
+                ""
+            ),
+            reverse=True
+        )
+        grouped_rows.extend(rows)
+
+    return grouped_rows
+
 def build_soc_display(
     alert_count,
     ticket_count,
@@ -814,12 +964,8 @@ def build_client_context(client, tool_key=""):
             []
         )
     )
-    tickets = client.get(
-        "tickets",
-        client.get(
-            "jira_tickets",
-            []
-        )
+    tickets = combined_ticket_records(
+        client
     )
     source_evidence = client.get(
         "source_evidence",
@@ -829,6 +975,11 @@ def build_client_context(client, tool_key=""):
         )
     )
     display_alerts, display_tickets = align_evidence_records(
+        source_evidence,
+        tickets,
+        tool_key
+    )
+    paired_rows = build_paired_rows(
         source_evidence,
         tickets,
         tool_key
@@ -897,6 +1048,7 @@ def build_client_context(client, tool_key=""):
         "source_evidence": display_alerts,
         "wazuh_source_evidence": display_alerts,
         "display_tickets": display_tickets,
+        "paired_rows": paired_rows,
         "status": client.get(
             "status",
             (

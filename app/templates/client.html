@@ -26,6 +26,10 @@
         if tool.tool_key in ["securonix", "microsoft_sentinel"]
         else "Alerts"
     %}
+    {% set source_id_label = "Incident ID"
+        if tool.tool_key in ["securonix", "microsoft_sentinel"]
+        else "Alert ID"
+    %}
     {% set source_evidence = client.get(
         "source_evidence",
         client.get("wazuh_source_evidence", alerts)
@@ -135,232 +139,176 @@
         {% endif %}
     </section>
 
-    <section class="investigation-grid">
-        <article class="evidence-panel">
-            <div class="evidence-panel__header">
-                <div>
-                    <p class="dashboard-eyebrow">
-                        Source Evidence
-                    </p>
-                    <h2>
-                        {% if is_wazuh %}
-                            Wazuh Alert Evidence
-                        {% else %}
-                            {{ evidence_label }}
-                        {% endif %}
-                    </h2>
-                </div>
-                <span class="evidence-count">
-                    {{ source_evidence | length }}
-                </span>
+    <section class="evidence-panel paired-evidence-panel">
+        <div class="evidence-panel__header">
+            <div>
+                <p class="dashboard-eyebrow">
+                    Paired Evidence
+                </p>
+                <h2>{{ source_label }} and Jira Tickets</h2>
             </div>
+            <span class="evidence-count">
+                {{ client.paired_rows | length }}
+            </span>
+        </div>
 
-            {% if source_evidence %}
-            <ul class="identifier-list evidence-list--compact">
-                {% for alert in source_evidence %}
-                <li>
-                    {% if is_wazuh %}
-                    <div class="evidence-row-heading">
-                        <code>Rule {{ alert.rule_id | default("-") }}</code>
-                    </div>
-                    <span>
-                        Alert ID:
-                        {{ alert.wazuh_alert_id | default(alert.alert_id) | default(alert.id) | default("-") }}
-                    </span>
-                    <span>
-                        Time: {{ alert.display_time or "-" }}
-                    </span>
-                    <span>Level: {{ alert.level | default("-") }}</span>
-                    <span>Location: {{ alert.location | default("-") }}</span>
-                    <p class="evidence-description">
-                        {{ alert.description | default("-") }}
-                    </p>
-                    {% elif is_sentinelone %}
-                    <div class="evidence-row-heading">
-                        <code>{{ alert.sentinelone_threat_id | default(alert.sentinelone_source_id) | default(alert.display_id) | default(alert.id) }}</code>
-                        {% if alert.sentinelone_detection_type %}
-                        <span>{{ alert.sentinelone_detection_type }}</span>
-                        {% endif %}
-                    </div>
-                    {% if alert.sentinelone_source_id %}
-                    <span>Source ID: {{ alert.sentinelone_source_id }}</span>
-                    {% endif %}
-                    <span>
-                        Time: {{ alert.display_time or "-" }}
-                    </span>
-                    {% if alert.sentinelone_threat_name %}
-                    <span>Threat Name: {{ alert.sentinelone_threat_name }}</span>
-                    {% endif %}
-                    {% if alert.sentinelone_incident_status %}
-                    <span>Status: {{ alert.sentinelone_incident_status }}</span>
-                    {% endif %}
-                    {% if alert.severity %}
-                    <span>Severity: {{ alert.severity }}</span>
-                    {% endif %}
-                    {% if alert.confidence %}
-                    <span>Confidence: {{ alert.confidence }}</span>
-                    {% endif %}
-                    {% if alert.classification %}
-                    <span>Classification: {{ alert.classification }}</span>
-                    {% endif %}
-                    {% if alert.analyst_verdict %}
-                    <span>Analyst Verdict: {{ alert.analyst_verdict }}</span>
-                    {% endif %}
-                    {% if alert.endpoint_name %}
-                    <span>Endpoint: {{ alert.endpoint_name }}</span>
-                    {% endif %}
-                    {% if alert.agent_name %}
-                    <span>Agent: {{ alert.agent_name }}</span>
-                    {% endif %}
-                    {% if alert.computerName %}
-                    <span>Computer: {{ alert.computerName }}</span>
-                    {% endif %}
-                    {% if alert.site %}
-                    <span>Site: {{ alert.site }}</span>
-                    {% endif %}
-                    {% if alert.client %}
-                    <span>Client: {{ alert.client }}</span>
-                    {% endif %}
-                    {% else %}
-                    <code>{{ alert.display_id or alert.id }}</code>
-                    <span>
-                        Time: {{ alert.display_time or "-" }}
-                    </span>
-                    {% if tool.tool_key in ["securonix", "microsoft_sentinel"] %}
-                        {% if alert.status %}
-                            <span>Status: {{ alert.status }}</span>
-                        {% endif %}
-                    {% endif %}
-                    {% if tool.tool_key == "microsoft_sentinel" %}
-                        {% if alert.severity %}
-                            <span>Severity: {{ alert.severity }}</span>
-                        {% endif %}
-                        {% if alert.title %}
-                            <span>Title: {{ alert.title }}</span>
-                        {% endif %}
-                    {% endif %}
-                    {% if tool.tool_key == "securonix" %}
-                        {% if alert.priority %}
-                            <span>Priority: {{ alert.priority }}</span>
-                        {% endif %}
-                        {% if alert.url %}
-                            <a
-                                class="ticket-link"
-                                href="{{ alert.url }}"
-                                target="_blank"
-                                rel="noopener noreferrer"
-                            >
-                                Open incident
+        {% if client.paired_rows %}
+        <div class="paired-table-wrap">
+            <table class="paired-table">
+                <colgroup>
+                    <col class="paired-col-status">
+                    <col class="paired-col-source-id">
+                    <col class="paired-col-source-time">
+                    <col class="paired-col-source-details">
+                    <col class="paired-col-ticket-id">
+                    <col class="paired-col-ticket-time">
+                    <col class="paired-col-ticket-details">
+                </colgroup>
+                <thead>
+                    <tr>
+                        <th>Status</th>
+                        <th>{{ source_id_label }}</th>
+                        <th>Source Time</th>
+                        <th>Source Details</th>
+                        <th>Jira Ticket</th>
+                        <th>Ticket Time</th>
+                        <th>Ticket Details</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for row in client.paired_rows %}
+                    {% set alert = row.alert %}
+                    {% set ticket = row.ticket %}
+                    <tr class="paired-row paired-row--{{ row.row_type }}">
+                        <td>
+                            {% if row.row_type == "missing_ticket" %}
+                            <span class="pair-status pair-status--missing">
+                                Missing Ticket
+                            </span>
+                            {% elif row.row_type == "extra_ticket" %}
+                            <span class="pair-status pair-status--review">
+                                Extra Ticket / Review
+                            </span>
+                            {% else %}
+                            <span class="pair-status pair-status--matched">
+                                Matched
+                            </span>
+                            {% endif %}
+                        </td>
+                        <td>
+                            {% if alert %}
+                            <div class="paired-primary">
+                                <code>{{ alert.display_id or alert.id or "-" }}</code>
+                            </div>
+                            {% if is_wazuh and alert.rule_id %}
+                            <span><strong>Rule</strong><em>{{ alert.rule_id }}</em></span>
+                            {% endif %}
+                            {% else %}
+                            <div class="pair-empty-state">Missing Source</div>
+                            {% endif %}
+                        </td>
+                        <td>
+                            {% if alert %}
+                                {{ alert.display_time or "-" }}
+                            {% else %}
+                                -
+                            {% endif %}
+                        </td>
+                        <td>
+                            {% if alert %}
+                            <div class="paired-detail-list">
+                                {% if is_wazuh %}
+                                    {% if alert.level %}<span><strong>Level</strong><em>{{ alert.level }}</em></span>{% endif %}
+                                    {% if alert.location %}<span><strong>Location</strong><em>{{ alert.location }}</em></span>{% endif %}
+                                    {% if alert.agent_name %}<span><strong>Agent</strong><em>{{ alert.agent_name }}</em></span>{% endif %}
+                                    {% if alert.description %}<span><strong>Description</strong><em>{{ alert.description }}</em></span>{% endif %}
+                                {% elif is_sentinelone %}
+                                    {% if alert.sentinelone_threat_name %}<span><strong>Threat</strong><em>{{ alert.sentinelone_threat_name }}</em></span>{% endif %}
+                                    {% if alert.sentinelone_detection_type %}<span><strong>Detection</strong><em>{{ alert.sentinelone_detection_type }}</em></span>{% endif %}
+                                    {% if alert.sentinelone_incident_status %}<span><strong>Status</strong><em>{{ alert.sentinelone_incident_status }}</em></span>{% endif %}
+                                    {% if alert.severity %}<span><strong>Severity</strong><em>{{ alert.severity }}</em></span>{% endif %}
+                                    {% if alert.confidence %}<span><strong>Confidence</strong><em>{{ alert.confidence }}</em></span>{% endif %}
+                                    {% if alert.classification %}<span><strong>Classification</strong><em>{{ alert.classification }}</em></span>{% endif %}
+                                    {% if alert.analyst_verdict %}<span><strong>Analyst Verdict</strong><em>{{ alert.analyst_verdict }}</em></span>{% endif %}
+                                    {% if alert.endpoint_name %}<span><strong>Endpoint</strong><em>{{ alert.endpoint_name }}</em></span>{% endif %}
+                                    {% if alert.agent_name %}<span><strong>Agent</strong><em>{{ alert.agent_name }}</em></span>{% endif %}
+                                    {% if alert.computerName %}<span><strong>Computer</strong><em>{{ alert.computerName }}</em></span>{% endif %}
+                                    {% if alert.site %}<span><strong>Site</strong><em>{{ alert.site }}</em></span>{% endif %}
+                                {% elif tool.tool_key == "microsoft_sentinel" %}
+                                    {% if alert.title %}<span><strong>Title</strong><em>{{ alert.title }}</em></span>{% endif %}
+                                    {% if alert.severity %}<span><strong>Severity</strong><em>{{ alert.severity }}</em></span>{% endif %}
+                                    {% if alert.status %}<span><strong>Status</strong><em>{{ alert.status }}</em></span>{% endif %}
+                                    {% if alert.microsoft_sentinel_incident_name %}<span><strong>Incident</strong><em>{{ alert.microsoft_sentinel_incident_name }}</em></span>{% endif %}
+                                {% elif tool.tool_key == "securonix" %}
+                                    {% if alert.status %}<span><strong>Status</strong><em>{{ alert.status }}</em></span>{% endif %}
+                                    {% if alert.priority %}<span><strong>Priority</strong><em>{{ alert.priority }}</em></span>{% endif %}
+                                    {% if alert.risk_score %}<span><strong>Risk</strong><em>{{ alert.risk_score }}</em></span>{% endif %}
+                                    {% if alert.incident_type %}<span><strong>Type</strong><em>{{ alert.incident_type }}</em></span>{% endif %}
+                                    {% if alert.url %}
+                                    <a class="ticket-link" href="{{ alert.url }}" target="_blank" rel="noopener noreferrer">Open incident</a>
+                                    {% endif %}
+                                {% else %}
+                                    {% if alert.status %}<span><strong>Status</strong><em>{{ alert.status }}</em></span>{% endif %}
+                                {% endif %}
+                            </div>
+                            {% else %}
+                            <div class="pair-empty-state">Missing Source</div>
+                            {% endif %}
+                        </td>
+                        <td>
+                            {% if ticket %}
+                            {% set ticket_key = ticket.key | default(ticket.jira_key) %}
+                            <a class="ticket-link" href="{{ ticket.ticket_url }}" target="_blank" rel="noopener noreferrer">
+                                {{ ticket_key or "-" }}
                             </a>
-                        {% endif %}
-                    {% endif %}
-                    {% endif %}
-                </li>
-                {% endfor %}
-            </ul>
-            {% else %}
-            <div class="evidence-empty">
-                {% if tool.tool_key == "wazuh" %}
-                    No Wazuh alert evidence is available for
-                    this client.
-                {% elif tool.tool_key == "securonix" %}
-                    No incident IDs available for this source.
-                {% else %}
-                    No alert IDs available for this source.
-                {% endif %}
-            </div>
-            {% endif %}
-        </article>
-
-        <article class="evidence-panel">
-            <div class="evidence-panel__header">
-                <div>
-                    <p class="dashboard-eyebrow">
-                        Investigation Links
-                    </p>
-                    <h2>Jira Ticket IDs</h2>
-                </div>
-                <span class="evidence-count">
-                    {{ tickets | length }}
-                </span>
-            </div>
-
-            {% if tickets %}
-            <ul class="identifier-list">
-                {% for ticket in display_tickets %}
-                <li>
-                    {% set ticket_key = ticket.key | default(ticket.jira_key) %}
-                    <a
-                        class="ticket-link"
-                        href="{{ ticket.ticket_url }}"
-                        target="_blank"
-                        rel="noopener noreferrer"
-                    >
-                        {{ ticket_key }}
-                    </a>
-                    {% if ticket.rule_id %}
-                    <span>Rule: {{ ticket.rule_id }}</span>
-                    {% endif %}
-                    {% if ticket.wazuh_alert_id %}
-                    <span>Wazuh Alert ID: {{ ticket.wazuh_alert_id }}</span>
-                    {% endif %}
-                    {% if ticket.status %}
-                    <span>Status: {{ ticket.status }}</span>
-                    {% endif %}
-                    <span>
-                        Time: {{ ticket.display_time or "-" }}
-                    </span>
-                    {% if is_sentinelone %}
-                        {% if ticket.summary %}
-                        <span>Summary: {{ ticket.summary }}</span>
-                        {% endif %}
-                        {% if ticket.sentinelone_threat_id %}
-                        <span>SentinelOne Threat ID: {{ ticket.sentinelone_threat_id }}</span>
-                        {% endif %}
-                        {% if ticket.sentinelone_threat_url_id %}
-                        <span>SentinelOne URL ID: {{ ticket.sentinelone_threat_url_id }}</span>
-                        {% endif %}
-                        {% if ticket.client %}
-                        <span>Client: {{ ticket.client }}</span>
-                        {% endif %}
-                        {% if ticket.strict_client %}
-                        <span>Tenant/Site: {{ ticket.strict_client }}</span>
-                        {% endif %}
-                        {% if ticket.match_status %}
-                        <span>Match: {{ ticket.match_status }}</span>
-                        {% endif %}
-                    {% endif %}
-                    {% if ticket.microsoft_sentinel_incident_id %}
-                    <span>
-                        Incident ID:
-                        {{ ticket.microsoft_sentinel_incident_id }}
-                    </span>
-                    {% endif %}
-                    {% if (
-                        ticket.client_resolution_source
-                        and
-                        ticket.client_resolution_source != "tenant_field"
-                    ) %}
-                    <span>Resolution: {{ ticket.client_resolution_source }}</span>
-                    {% endif %}
-                    {% if ticket.metadata_issues %}
-                    <div class="warning-badge-list">
-                        {% for issue in ticket.metadata_issues %}
-                        <span class="warning-badge">{{ issue }}</span>
-                        {% endfor %}
-                    </div>
-                    {% endif %}
-                </li>
-                {% endfor %}
-            </ul>
-            {% else %}
-            <div class="evidence-empty">
-                No Jira ticket IDs available for this client.
-            </div>
-            {% endif %}
-        </article>
+                            {% else %}
+                            <div class="pair-empty-state pair-empty-state--ticket">Missing Ticket</div>
+                            {% endif %}
+                        </td>
+                        <td>
+                            {% if ticket %}
+                                {{ ticket.display_time or "-" }}
+                            {% else %}
+                                -
+                            {% endif %}
+                        </td>
+                        <td>
+                            {% if ticket %}
+                            <div class="paired-detail-list">
+                                {% if ticket.status %}<span><strong>Status</strong><em>{{ ticket.status }}</em></span>{% endif %}
+                                {% if ticket.summary %}<span><strong>Summary</strong><em>{{ ticket.summary }}</em></span>{% endif %}
+                                {% if ticket.rule_id %}<span><strong>Rule</strong><em>{{ ticket.rule_id }}</em></span>{% endif %}
+                                {% if ticket.wazuh_alert_id %}<span><strong>Wazuh Alert ID</strong><em>{{ ticket.wazuh_alert_id }}</em></span>{% endif %}
+                                {% if ticket.sentinelone_threat_id %}<span><strong>SentinelOne Threat ID</strong><em>{{ ticket.sentinelone_threat_id }}</em></span>{% endif %}
+                                {% if ticket.sentinelone_threat_url_id %}<span><strong>SentinelOne URL ID</strong><em>{{ ticket.sentinelone_threat_url_id }}</em></span>{% endif %}
+                                {% if ticket.microsoft_sentinel_incident_id %}<span><strong>Incident ID</strong><em>{{ ticket.microsoft_sentinel_incident_id }}</em></span>{% endif %}
+                                {% if ticket.securonix_incident_id %}<span><strong>Incident ID</strong><em>{{ ticket.securonix_incident_id }}</em></span>{% endif %}
+                                {% if ticket.client_resolution_source and ticket.client_resolution_source != "tenant_field" %}<span><strong>Resolution</strong><em>{{ ticket.client_resolution_source }}</em></span>{% endif %}
+                                {% if ticket.strict_client %}<span><strong>Tenant/Site</strong><em>{{ ticket.strict_client }}</em></span>{% endif %}
+                                {% if ticket.match_status %}<span><strong>Match</strong><em>{{ ticket.match_status }}</em></span>{% endif %}
+                                {% if ticket.metadata_issues %}
+                                <div class="warning-badge-list">
+                                    {% for issue in ticket.metadata_issues %}
+                                    <span class="warning-badge">{{ issue }}</span>
+                                    {% endfor %}
+                                </div>
+                                {% endif %}
+                            </div>
+                            {% else %}
+                            <div class="pair-empty-state pair-empty-state--ticket">Missing Ticket</div>
+                            {% endif %}
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+        {% else %}
+        <div class="evidence-empty">
+            No source or Jira evidence is available for this client.
+        </div>
+        {% endif %}
     </section>
-
     <footer class="page-footer-navigation">
         <a
             class="text-link"
