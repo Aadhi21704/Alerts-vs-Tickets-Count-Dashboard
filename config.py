@@ -17,7 +17,8 @@ MSSP_ALLOWED_CLIENTS = [
 ]
 # excluding greenko edr because we dont manage edr for them
 RESSELLER_EXCLUDED_CLIENTS = [
-    "Greenko-Energy-EDR"
+    "Greenko-Energy-EDR",
+    "Novandie"
 ]
 
 MANAGED_CLIENTS = {
@@ -179,7 +180,7 @@ TEAMS_WEBHOOK_URL = ""
 
 TEAMS_CA_BUNDLE = ""
 
-TEAMS_VERIFY_SSL = True
+TEAMS_VERIFY_SSL = False
 
 TEAMS_USE_PROXY = False
 
