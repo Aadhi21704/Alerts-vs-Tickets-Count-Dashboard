@@ -1438,7 +1438,10 @@ body {
     width: 128px;
 }
 
-.paired-col-source-id,
+.paired-col-source-id {
+    width: 240px;
+}
+
 .paired-col-ticket-id {
     width: 190px;
 }
@@ -1526,6 +1529,11 @@ body {
     font-size: 0.82rem;
     overflow-wrap: anywhere;
     white-space: normal;
+}
+
+.paired-primary code {
+    overflow-wrap: normal;
+    white-space: nowrap;
 }
 
 .paired-table td > span:not(.pair-status):not(.missing-side) {
